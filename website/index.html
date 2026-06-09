@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Application Status // Ron Keren</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --mono: 'JetBrains Mono', 'Courier New', monospace;
+      --bg:       #f5f5f4;
+      --surface:  #efefed;
+      --border:   #d6d6d3;
+      --dim:      #a8a8a4;
+      --muted:    #737370;
+      --text:     #3a3a38;
+      --bright:   #111110;
+
+      --pending:    #92400e;   --pending-bg:    #fef3c7;  --pending-bd:    #fcd34d;
+      --applied:    #1d4ed8;   --applied-bg:    #dbeafe;  --applied-bd:    #93c5fd;
+      --interview:  #166534;   --interview-bg:  #dcfce7;  --interview-bd:  #86efac;
+      --rejected:   #991b1b;   --rejected-bg:   #fee2e2;  --rejected-bd:   #fca5a5;
+      --offer:      #6b21a8;   --offer-bg:      #f3e8ff;  --offer-bd:      #d8b4fe;
+    }
+
+    html, body { background: var(--bg); }
+
+    body {
+      font-family: var(--mono);
+      color: var(--text);
+      font-size: 12.5px;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 40px 56px 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+    .prompt { color: var(--dim); font-size: 11px; margin-bottom: 6px; }
+    .prompt span { color: var(--interview); font-weight: 500; }
+    .site-title { font-size: 20px; font-weight: 700; color: var(--bright); letter-spacing: -0.3px; }
+    .site-title .slash { color: var(--dim); font-weight: 300; }
+    .header-meta { text-align: right; color: var(--muted); font-size: 11px; line-height: 18px; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex;
+      border: 1px solid var(--border);
+      background: white;
+      margin-bottom: 24px;
+    }
+    .stat { flex: 1; padding: 14px 20px; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: none; }
+    .stat-num { font-size: 26px; font-weight: 700; color: var(--bright); line-height: 1; margin-bottom: 3px; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .stat-num.c-interview { color: var(--interview); }
+    .stat-num.c-pending   { color: var(--pending); }
+    .stat-num.c-rejected  { color: var(--rejected); }
+    .stat-num.c-offer     { color: var(--offer); }
+    .stat-num.c-applied   { color: var(--applied); }
+
+    /* ── Filters ── */
+    .filters {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--muted);
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: all 0.12s;
+    }
+    .chip:hover { border-color: var(--dim); color: var(--text); }
+    .chip.active { background: var(--bright); color: white; border-color: var(--bright); }
+
+    .filter-divider { width: 1px; height: 20px; background: var(--border); }
+
+    .date-input {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      border-radius: 4px;
+      outline: none;
+    }
+    .date-input:focus { border-color: var(--dim); }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { border-bottom: 1px solid var(--border); }
+    thead th {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 14px;
+      text-align: left;
+      white-space: nowrap;
+      background: white;
+    }
+    thead th:first-child { padding-left: 0; border-radius: 0; }
+    thead th:last-child { text-align: right; padding-right: 0; }
+
+    tbody tr.data-row {
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    tbody tr.data-row:hover { background: white; }
+    tbody tr.data-row.expanded { background: white; border-bottom: none; }
+    tbody tr.expand-row { display: none; border-bottom: 1px solid var(--border); background: white; }
+    tbody tr.expand-row.open { display: table-row; }
+
+    tbody td { padding: 13px 14px; vertical-align: middle; }
+    tbody td:first-child { padding-left: 0; }
+    tbody td:last-child { padding-right: 0; }
+
+    .col-toggle { color: var(--dim); font-size: 11px; width: 20px; padding-right: 4px; }
+    .col-company { font-weight: 700; color: var(--bright); font-size: 13px; white-space: nowrap; }
+    .col-role { color: var(--text); font-size: 12px; }
+    .col-date { font-size: 11px; white-space: nowrap; }
+    .date-label { display: block; font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1px; }
+    .date-val { color: var(--text); }
+    .col-last { font-size: 11px; max-width: 200px; }
+    .last-subj { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: block; }
+    .last-date { font-size: 10px; color: var(--dim); margin-top: 1px; }
+    .col-status { text-align: right; }
+
+    /* ── Expanded content ── */
+    .expand-cell { padding: 0 !important; }
+    .expand-inner {
+      padding: 16px 20px 20px;
+      border-top: 1px dashed var(--border);
+      margin: 0 0;
+    }
+    .expand-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .expand-block-label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--dim);
+      margin-bottom: 6px;
+    }
+    .expand-body {
+      font-size: 11.5px;
+      color: var(--text);
+      line-height: 1.7;
+      background: var(--bg);
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .rejection-box {
+      background: var(--rejected-bg);
+      border: 1px solid var(--rejected-bd);
+      border-radius: 4px;
+      padding: 12px 14px;
+      font-size: 11.5px;
+      color: var(--rejected);
+      line-height: 1.7;
+    }
+    .rejection-box .rj-label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    /* ── Status badge — pill, no dot ── */
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .badge-pending   { background: var(--pending-bg);   color: var(--pending);   border: 1px solid var(--pending-bd); }
+    .badge-applied   { background: var(--applied-bg);   color: var(--applied);   border: 1px solid var(--applied-bd); }
+    .badge-interview { background: var(--interview-bg); color: var(--interview); border: 1px solid var(--interview-bd); }
+    .badge-rejected  { background: var(--rejected-bg);  color: var(--rejected);  border: 1px solid var(--rejected-bd); }
+    .badge-offer     { background: var(--offer-bg);     color: var(--offer);     border: 1px solid var(--offer-bd); }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+      color: var(--dim);
+      font-size: 11px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .empty { padding: 40px 0; color: var(--muted); font-size: 12px; }
+    .no-results { padding: 24px 0; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header-top">
+    <div>
+      <div class="prompt"><span>ron@keren</span>:~/job-search $</div>
+      <div class="site-title">Application Status <span class="slash">//</span> Ron Keren</div>
+    </div>
+    <div class="header-meta">
+      <div id="sync-line">—</div>
+      <div>ronkeren@gmail.com</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <span class="filter-label">Status</span>
+    <div class="filter-chips" id="status-filters"></div>
+    <div class="filter-divider"></div>
+    <span class="filter-label">From</span>
+    <input type="date" class="date-input" id="date-from" />
+    <span class="filter-label">To</span>
+    <input type="date" class="date-input" id="date-to" />
+  </div>
+
+  <div class="section-label" id="results-label">Active Applications</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:20px"></th>
+        <th>Company</th>
+        <th>Role</th>
+        <th>Sent</th>
+        <th>Received</th>
+        <th>Last Email</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+
+  <div class="footer">
+    <div id="footer-left">[Ron.Keren] // Active Job Search</div>
+    <div id="footer-right"></div>
+  </div>
+
+  <script>
+    const STATUS_LABELS = { offer:'Offer', interview:'Interview', applied:'Applied', pending:'Pending', rejected:'Declined' };
+    const STATUS_ORDER  = ['offer','interview','applied','pending','rejected'];
+    const STAT_CLS = { offer:'c-offer', interview:'c-interview', pending:'c-pending', rejected:'c-rejected', applied:'c-applied' };
+
+    let allApps = [];
+    let activeStatus = 'all';
+    let dateFrom = null, dateTo = null;
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' });
+    }
+
+    function badge(status) {
+      return `<span class="badge badge-${status}">${STATUS_LABELS[status] || status}</span>`;
+    }
+
+    function filtered() {
+      return allApps.filter(a => {
+        if (activeStatus !== 'all' && a.status !== activeStatus) return false;
+        if (dateFrom && a.dateApplied < dateFrom) return false;
+        if (dateTo && a.dateApplied > dateTo) return false;
+        return true;
+      });
+    }
+
+    function renderTable() {
+      const apps = filtered();
+      const tbody = document.getElementById('table-body');
+      document.getElementById('results-label').textContent =
+        `${apps.length} Application${apps.length !== 1 ? 's' : ''} ${activeStatus !== 'all' ? '· ' + STATUS_LABELS[activeStatus] : ''}`;
+
+      if (!apps.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="no-results">No applications match the current filters.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = apps.map((a, i) => {
+        const hasBody = a.bodyExcerpt && a.bodyExcerpt.trim().length > 10;
+        const hasRejection = a.status === 'rejected' && a.rejectionReason;
+        const expandContent = hasBody ? `
+          <tr class="expand-row" id="expand-${i}">
+            <td class="expand-cell" colspan="7">
+              <div class="expand-inner">
+                <div class="expand-grid">
+                  <div>
+                    <div class="expand-block-label">Last Email Preview</div>
+                    <div class="expand-body">${escHtml(a.bodyExcerpt || '').slice(0, 600)}</div>
+                  </div>
+                  ${hasRejection ? `
+                  <div>
+                    <div class="expand-block-label">Rejection Reason</div>
+                    <div class="rejection-box">
+                      <span class="rj-label">Why they declined</span>
+                      ${escHtml(a.rejectionReason)}
+                    </div>
+                  </div>` : '<div></div>'}
+                </div>
+              </div>
+            </td>
+          </tr>` : '';
+
+        return `
+          <tr class="data-row" onclick="toggle(${i})" id="row-${i}">
+            <td class="col-toggle" id="arrow-${i}">▸</td>
+            <td class="col-company">${a.company}</td>
+            <td class="col-role">${a.role}</td>
+            <td class="col-date">
+              <span class="date-label">Sent</span>
+              <span class="date-val">${fmtDate(a.dateApplied)}</span>
+            </td>
+            <td class="col-date">
+              <span class="date-label">Received</span>
+              <span class="date-val">${fmtDate(a.lastReply)}</span>
+            </td>
+            <td class="col-last">
+              ${a.lastReplySubject
+                ? `<span class="last-subj">${escHtml(a.lastReplySubject)}</span><span class="last-date">${fmtDate(a.lastReply)}</span>`
+                : '<span style="color:var(--dim)">—</span>'}
+            </td>
+            <td class="col-status">${badge(a.status)}</td>
+          </tr>
+          ${expandContent}`;
+      }).join('');
+
+      const active = apps.filter(a => a.status !== 'rejected').length;
+      const rejected = apps.filter(a => a.status === 'rejected').length;
+      document.getElementById('footer-right').textContent =
+        `${active} active · ${rejected} declined · synced from Gmail`;
+    }
+
+    function toggle(i) {
+      const row = document.getElementById(`row-${i}`);
+      const exp = document.getElementById(`expand-${i}`);
+      const arrow = document.getElementById(`arrow-${i}`);
+      if (!exp) return;
+      const isOpen = exp.classList.contains('open');
+      exp.classList.toggle('open', !isOpen);
+      row.classList.toggle('expanded', !isOpen);
+      arrow.textContent = isOpen ? '▸' : '▾';
+    }
+
+    function escHtml(s) {
+      return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderStats(apps) {
+      const counts = {};
+      apps.forEach(a => { counts[a.status] = (counts[a.status] || 0) + 1; });
+      const items = [
+        { label:'Total', num: apps.length, cls:'' },
+        { label:'Interview', num: counts.interview||0, cls:'c-interview' },
+        { label:'Pending',   num: counts.pending||0,   cls:'c-pending' },
+        { label:'Declined',  num: counts.rejected||0,  cls:'c-rejected' },
+        { label:'Applied',   num: counts.applied||0,   cls:'c-applied' },
+        ...(counts.offer ? [{ label:'Offer', num:counts.offer, cls:'c-offer'}] : []),
+      ];
+      document.getElementById('stats-bar').innerHTML = items.map(s =>
+        `<div class="stat"><div class="stat-num ${s.cls}">${s.num}</div><div class="stat-label">${s.label}</div></div>`
+      ).join('');
+    }
+
+    function renderFilters(apps) {
+      const statuses = ['all', ...STATUS_ORDER.filter(s => apps.some(a => a.status === s))];
+      document.getElementById('status-filters').innerHTML = statuses.map(s =>
+        `<button class="chip ${s === activeStatus ? 'active' : ''}" onclick="setStatus('${s}')">
+          ${s === 'all' ? 'All' : STATUS_LABELS[s]}
+        </button>`
+      ).join('');
+    }
+
+    function setStatus(s) {
+      activeStatus = s;
+      renderFilters(allApps);
+      renderTable();
+    }
+
+    function render(data) {
+      allApps = data.applications || [];
+      const fetched = new Date(data.lastFetched);
+      document.getElementById('sync-line').textContent =
+        `Last sync: ${fetched.toLocaleDateString('en-GB', {day:'numeric',month:'short'})} ${fetched.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+
+      renderStats(allApps);
+      renderFilters(allApps);
+      renderTable();
+
+      // Date filter events
+      document.getElementById('date-from').addEventListener('change', e => {
+        dateFrom = e.target.value || null;
+        renderTable();
+      });
+      document.getElementById('date-to').addEventListener('change', e => {
+        dateTo = e.target.value || null;
+        renderTable();
+      });
+    }
+
+    fetch('/applications.json')
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(render)
+      .catch(() => {
+        document.getElementById('table-body').innerHTML =
+          `<tr><td colspan="7" class="empty">Run <code>bun gmail_fetcher.js</code> to sync.</td></tr>`;
+      });
+  </script>
+</body>
+</html>
