@@ -35,4 +35,5 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 credentials.json
 token.json
 applications.json
+config.json
 node_modules/

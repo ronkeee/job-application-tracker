@@ -36,6 +36,13 @@ Bun.serve({
       return Response.json({ syncing });
     }
 
+    if (url.pathname === '/api/config') {
+      const configPath = path.join(ROOT, 'config.json');
+      const examplePath = path.join(ROOT, 'config.example.json');
+      const file = Bun.file(await Bun.file(configPath).exists() ? configPath : examplePath);
+      return new Response(file, { headers: { 'Content-Type': 'application/json' } });
+    }
+
     // ── Static files ─────────────────────────────────────────────────────
     let filePath = url.pathname === '/' ? '/website/index.html' : url.pathname;
     const fullPath = path.join(ROOT, filePath);

@@ -6,6 +6,15 @@ import fs from 'fs';
 const TOKEN_PATH = './token.json';
 const CREDS_PATH = './credentials.json';
 const OUTPUT_PATH = './applications.json';
+const CONFIG_PATH = './config.json';
+const CONFIG_EXAMPLE_PATH = './config.example.json';
+
+if (!fs.existsSync(CONFIG_PATH)) {
+  console.warn('⚠️  config.json not found — using defaults. Run: bun setup.js');
+}
+const config = JSON.parse(fs.readFileSync(
+  fs.existsSync(CONFIG_PATH) ? CONFIG_PATH : CONFIG_EXAMPLE_PATH, 'utf8'
+));
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 if (!fs.existsSync(CREDS_PATH)) { console.error('❌ credentials.json not found.'); process.exit(1); }
@@ -140,7 +149,14 @@ function classifyStatus(messages, myEmail) {
   // change. Strip out "if ..." sentences before keyword-matching so this
   // boilerplate doesn't produce false "interview" or "rejected" results —
   // only concrete, already-happened next steps should flip the status.
-  const decisiveText = allText.replace(/[^.!?]*\bif\b[^.!?]*[.!?]/gi, ' ');
+  let decisiveText = allText.replace(/[^.!?]*\bif\b[^.!?]*[.!?]/gi, ' ');
+
+  // Some "application received" auto-replies include a candidate-safety /
+  // anti-fraud notice that warns recruiting fraud is "unfortunately" common.
+  // That sentence (and its surrounding paragraph) trips the bare
+  // "unfortunately" rejection keyword below even though it has nothing to do
+  // with the actual application status — strip it out first.
+  decisiveText = decisiveText.replace(/[^.!?]*\b(?:fraud|impersonat|phishing|scam)\w*[^.!?]*[.!?]/gi, ' ');
 
   if (/offer letter|extend an offer|formal offer|pleased to offer|compensation package/i.test(decisiveText)) return 'offer';
   // Require a concrete interview/scheduling signal — not just the bare word
@@ -310,12 +326,12 @@ for (const threadId of allThreadIds) {
   const parsed = parseSubject(subject);
 
   let company = fromCompany || parsed.company || 'Unknown';
-  let role = parsed.role || 'Senior Product Designer';
+  let role = parsed.role || config.defaultRole;
 
   // Clean up role — if it looks like a company name (no design keywords), use as company
   const designKeywords = /designer|design|product|ux|ui|lead|head|creative|visual/i;
   if (!designKeywords.test(role) && role.length < 30 && !company || company === 'Unknown') {
-    if (!designKeywords.test(role)) company = role, role = 'Senior Product Designer';
+    if (!designKeywords.test(role)) company = role, role = config.defaultRole;
   }
 
   if (seen.has(threadId)) continue;
@@ -326,7 +342,8 @@ for (const threadId of allThreadIds) {
   // Last reply from company (not from me)
   const replies = messages.filter(m => {
     const f = getHeader(m.payload.headers, 'from').toLowerCase();
-    return !f.includes(myEmail.split('@')[0].toLowerCase()) && !f.includes('ronkeren');
+    const myHandle = config.handle.replace('@', '').toLowerCase();
+    return !f.includes(myEmail.split('@')[0].toLowerCase()) && !f.includes(myHandle);
   });
   // Use the last message in thread overall (company or mine) for body
   const lastMsg = messages[messages.length - 1];
@@ -362,7 +379,7 @@ for (const threadId of allThreadIds) {
 // "application received" auto-reply followed by a separate "intro call" invite)
 // Status priority used as tiebreaker when dates are identical
 const STATUS_PRIORITY = { offer: 5, rejected: 4, interview: 3, applied: 2, pending: 1 };
-const DEFAULT_ROLE = 'Senior Product Designer';
+const DEFAULT_ROLE = config.defaultRole;
 const deduped = new Map();
 for (const app of applications) {
   const key = app.company.toLowerCase();
