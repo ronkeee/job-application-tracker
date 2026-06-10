@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "tracker",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4242", "--directory", "website"],
-      "port": 4242
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["server.js"],
+      "port": 4343
     }
   ]
 }

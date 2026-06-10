@@ -104,16 +104,23 @@ function parseSubject(subject) {
     if (m) company = m[1].trim();
   }
 
+  // "... with COMPANY" (e.g. "Intro Call with Guardio")
+  if (!company) {
+    m = subject.match(/\bwith\s+([A-Z][A-Za-z0-9\s&.'-]{1,25}?)(?:\s*[!.,]|$)/);
+    if (m) company = m[1].trim();
+  }
+
   return { company, role };
 }
 
-// Is this subject likely a real job application email?
-function isJobEmail(subject, fromEmail) {
-  const s = subject.toLowerCase();
+// Is this subject (or body) likely a real job application email?
+function isJobEmail(subject, bodyText) {
+  const s = (subject + ' ' + (bodyText || '').slice(0, 1000)).toLowerCase();
   const jobKeywords = [
     'application', 'applying', 'applied', 'interview', 'position', 'role',
     'candidate', 'hiring', 'recruiter', 'opportunity', 'job offer',
-    'next steps', 'assessment', 'screening', 'resume', 'cv'
+    'next steps', 'assessment', 'screening', 'resume', 'cv',
+    'intro call', 'schedule a call', 'schedule time', 'call with'
   ];
   return jobKeywords.some(k => s.includes(k));
 }
@@ -125,10 +132,23 @@ function classifyStatus(messages, myEmail) {
     return subject + ' ' + body;
   }).join(' ');
 
-  if (/offer letter|extend an offer|formal offer|pleased to offer|compensation package/i.test(allText)) return 'offer';
-  if (/interview|schedule a call|schedule time|next step|zoom|google meet|availability|phone screen|technical assessment/i.test(allText)) return 'interview';
-  if (/unfortunately|not moving forward|not selected|other candidates|decided (not to proceed|to move)|not a fit|position has been filled|not proceed|decided not to|chosen to continue the selection|will not be moving|not be progressing|won't be moving|not shortlisted|regret to inform/i.test(allText)) return 'rejected';
-  if (/thank you for apply|received your application|application received|we've received|have received your/i.test(allText)) return 'applied';
+  // Many "application received" auto-replies contain boilerplate about what
+  // *might* happen later — e.g. "if you are among the qualified candidates,
+  // you will receive an email to schedule a first interview" or "if you are
+  // not selected, keep an eye on our jobs page". These mention "interview" /
+  // "not selected" but describe a hypothetical future, not an actual status
+  // change. Strip out "if ..." sentences before keyword-matching so this
+  // boilerplate doesn't produce false "interview" or "rejected" results —
+  // only concrete, already-happened next steps should flip the status.
+  const decisiveText = allText.replace(/[^.!?]*\bif\b[^.!?]*[.!?]/gi, ' ');
+
+  if (/offer letter|extend an offer|formal offer|pleased to offer|compensation package/i.test(decisiveText)) return 'offer';
+  // Require a concrete interview/scheduling signal — not just the bare word
+  // "interview", which often shows up in unrelated boilerplate (e.g. "we use
+  // Metaview to streamline interviews by recording and summarizing")
+  if (/schedule(?:d| a| an| your)? (?:interview|call|chat)|interview invit|invite you (?:for|to) (?:an? )?interview|like to interview you|(?:your|an) (?:upcoming|first) interview|intro call|select a time|book a (?:call|time)|choose a time|pick a time|phone screen|technical assessment|next steps? (?:in|with|of) (?:the|your|our) (?:hiring|interview)/i.test(decisiveText)) return 'interview';
+  if (/unfortunately|not moving forward|not selected|other candidates|decided (not to proceed|to move)|not a fit|position has been filled|not proceed|decided not to|chosen to continue the selection|will not be moving|not be progressing|won't be moving|not shortlisted|regret to inform/i.test(decisiveText)) return 'rejected';
+  // "Applied" is folded into "pending" — both mean "waiting to hear back"
   return 'pending';
 }
 
@@ -184,6 +204,8 @@ const queries = [
   `in:sent after:${afterDate} (application OR "applying for" OR "cover letter" OR "I am applying" OR "senior product designer")`,
   // Company replies / confirmations
   `in:inbox after:${afterDate} (application received OR "thank you for applying" OR "thanks for applying" OR "your application" OR interview OR "next steps" OR "we'd like to" OR "not moving forward" OR "unfortunately")`,
+  // Interview / scheduling emails (separate query — Gmail's OR grouping above can miss these)
+  `in:inbox after:${afterDate} (interview OR "intro call" OR "schedule a call" OR "select a time" OR "phone screen")`,
 ];
 
 const allThreadIds = new Set();
@@ -209,8 +231,9 @@ for (const threadId of allThreadIds) {
   const to = getHeader(firstMsg.payload.headers, 'to');
   const date = formatDate(firstMsg.internalDate);
 
-  // Skip if subject doesn't look like a job email
-  if (!isJobEmail(subject, from)) {
+  // Skip if subject/body doesn't look like a job email
+  const threadBodyText = messages.map(m => getBody(m.payload)).join(' ').slice(0, 2000);
+  if (!isJobEmail(subject, threadBodyText)) {
     console.log(`  ⏭  Skipping: "${subject.slice(0,60)}"`);
     continue;
   }
@@ -221,8 +244,11 @@ for (const threadId of allThreadIds) {
   // For ATS emails, try the display name (e.g. "Guardio <no-reply@comeet...>")
   const fromDisplayName = from.match(/^([^<@]+?)\s*</)?.[1]?.trim();
   const isATS = ATS_DOMAINS.some(ats => fromEmail.includes(ats));
+  // A sender display name like "Noy Kazaz - Eitan" is a recruiter's personal
+  // name, not the company — fall back to parsing the subject in that case
+  const looksLikePersonName = fromDisplayName && /^[A-Za-z]+(\s+[A-Za-z]+)*\s*-\s*[A-Za-z]+$/.test(fromDisplayName);
   const fromCompany = isATS
-    ? (fromDisplayName && !/(greenhouse|lever|ashby|noreply|no.reply|team|hiring|recruit)/i.test(fromDisplayName) ? fromDisplayName : null)
+    ? (fromDisplayName && !looksLikePersonName && !/(greenhouse|lever|ashby|noreply|no.reply|team|hiring|recruit)/i.test(fromDisplayName) ? fromDisplayName : null)
     : extractCompanyFromEmail(fromEmail);
   const parsed = parseSubject(subject);
 
@@ -269,12 +295,15 @@ for (const threadId of allThreadIds) {
   console.log(`  ✓ ${company} — "${role}" — ${status} (${date})`);
 }
 
-// Deduplicate by company+role — keep the most recent thread per application
+// Deduplicate by company — keep the most recent thread per application
+// (a single application to a company may span multiple threads, e.g. an
+// "application received" auto-reply followed by a separate "intro call" invite)
 // Status priority used as tiebreaker when dates are identical
 const STATUS_PRIORITY = { offer: 5, rejected: 4, interview: 3, applied: 2, pending: 1 };
+const DEFAULT_ROLE = 'Senior Product Designer';
 const deduped = new Map();
 for (const app of applications) {
-  const key = `${app.company.toLowerCase()}||${app.role.toLowerCase()}`;
+  const key = app.company.toLowerCase();
   const existing = deduped.get(key);
   if (!existing) {
     deduped.set(key, app);
@@ -282,15 +311,23 @@ for (const app of applications) {
     // Prefer the one with the latest lastReply (or dateApplied as fallback)
     const appDate = app.lastReply || app.dateApplied;
     const exDate = existing.lastReply || existing.dateApplied;
+    let winner;
     if (appDate > exDate) {
       console.log(`  🔄 Merged duplicate: ${app.company} — keeping ${app.status} (${appDate}) over ${existing.status} (${exDate})`);
-      deduped.set(key, app);
+      winner = app;
     } else if (appDate === exDate && STATUS_PRIORITY[app.status] > STATUS_PRIORITY[existing.status]) {
       console.log(`  🔄 Merged duplicate: ${app.company} — status upgrade ${existing.status} → ${app.status}`);
-      deduped.set(key, app);
+      winner = app;
     } else {
       console.log(`  🔄 Merged duplicate: ${app.company} — keeping ${existing.status} (${exDate}) over ${app.status} (${appDate})`);
+      winner = existing;
     }
+    // Keep a more specific role if the winner only has the generic default
+    const loser = winner === app ? existing : app;
+    if (winner.role === DEFAULT_ROLE && loser.role !== DEFAULT_ROLE) {
+      winner = { ...winner, role: loser.role };
+    }
+    deduped.set(key, winner);
   }
 }
 
