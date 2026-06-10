@@ -182,6 +182,63 @@ function getBody(payload) {
   return '';
 }
 
+// Find the HTML part of a message (links live in <a href> tags, which the
+// plain-text part doesn't have)
+function getHtmlBody(payload) {
+  if (payload.mimeType === 'text/html' && payload.body?.data) {
+    return Buffer.from(payload.body.data, 'base64').toString('utf8');
+  }
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      const html = getHtmlBody(part);
+      if (html) return html;
+    }
+  }
+  return '';
+}
+
+// Domains/keywords that show up in nearly every marketing email footer and
+// aren't useful "reading material" for a job application
+const LINK_BLOCKLIST = /unsubscribe|privacy|preferences|view.?(this|in).?browser|terms.?of.?service|opt.?out|facebook\.com|twitter\.com|x\.com|instagram\.com|tiktok\.com|youtube\.com|mailto:|\.gif|\.png|\.jpg|click\.|track|sentry|wix\.com|cdn\./i;
+
+// Extract a small set of meaningful links (job posting, careers page,
+// scheduling links, company site, etc.) from a message's HTML body
+function extractLinks(payload, maxLinks = 4) {
+  const html = getHtmlBody(payload);
+  if (!html) return [];
+
+  const links = [];
+  const seen = new Set();
+  const re = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = re.exec(html)) && links.length < maxLinks * 3) {
+    let url = m[1].trim();
+    if (!/^https?:\/\//i.test(url)) continue;
+    if (LINK_BLOCKLIST.test(url)) continue;
+
+    let text = m[2].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    if (LINK_BLOCKLIST.test(text)) continue;
+
+    // Dedupe by URL (ignoring trailing query/hash noise)
+    const key = url.split(/[?#]/)[0];
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    // Build a friendly label
+    let label = text;
+    if (!label || label.length < 2 || label.length > 60) {
+      try {
+        label = new URL(url).hostname.replace(/^www\./, '');
+      } catch {
+        label = url.slice(0, 40);
+      }
+    }
+
+    links.push({ url, label });
+  }
+  return links.slice(0, maxLinks);
+}
+
 function formatDate(ms) {
   return new Date(Number(ms)).toISOString().split('T')[0];
 }
@@ -279,6 +336,10 @@ for (const threadId of allThreadIds) {
   const bodyExcerpt = lastReplyMsg ? extractBodyExcerpt(lastReplyMsg.payload) : null;
   const rejectionReason = status === 'rejected' && bodyExcerpt ? extractRejectionReason(bodyExcerpt) : null;
 
+  // Pull useful links (job posting, scheduling links, careers page, etc.)
+  // from the last reply, falling back to the most recent message overall
+  const links = lastReplyMsg ? extractLinks(lastReplyMsg.payload) : [];
+
   const entry = {
     company,
     role,
@@ -288,6 +349,7 @@ for (const threadId of allThreadIds) {
     lastReplySubject,
     bodyExcerpt,
     rejectionReason,
+    links,
     threadId,
   };
 
