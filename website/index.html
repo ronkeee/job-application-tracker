@@ -256,7 +256,12 @@
     .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
     /* ── Table ── */
-    table { width: 100%; border-collapse: collapse; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .col-company { width: 14%; }
+    .col-role { width: 18%; }
+    th:nth-child(3), th:nth-child(4), .col-date { width: 11%; }
+    .col-last { width: 36%; }
+    .col-status { width: 9%; }
     thead tr { border-bottom: 1px solid var(--border); }
     thead th {
       font-size: 10px;
