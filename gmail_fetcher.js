@@ -1,5 +1,5 @@
 // Usage: bun gmail_fetcher.js
-// Reads Gmail for job application emails (last 7 days), outputs applications.json
+// Reads Gmail for job application emails (last 60 days on first sync, then last 7 days), outputs applications.json
 import { google } from 'googleapis';
 import fs from 'fs';
 
@@ -260,15 +260,16 @@ function formatDate(ms) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-console.log('🔍 Searching Gmail for job applications (last 7 days)...');
+const isFirstSync = !fs.existsSync(OUTPUT_PATH);
+const lookbackDays = isFirstSync ? 60 : 7;
+console.log(`🔍 Searching Gmail for job applications (last ${lookbackDays} days${isFirstSync ? ', first sync' : ''})...`);
 
 const profile = await gmail.users.getProfile({ userId: 'me' });
 const myEmail = profile.data.emailAddress;
 console.log(`📧 Signed in as: ${myEmail}\n`);
 
-// Last 7 days
 const since = new Date();
-since.setDate(since.getDate() - 7);
+since.setDate(since.getDate() - lookbackDays);
 const afterDate = `${since.getFullYear()}/${String(since.getMonth()+1).padStart(2,'0')}/${String(since.getDate()).padStart(2,'0')}`;
 
 // Search both sent (applications you sent) and inbox (replies from companies)
