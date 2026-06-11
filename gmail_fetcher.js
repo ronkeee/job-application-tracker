@@ -134,6 +134,31 @@ function parseSubject(subject) {
   return { company, role };
 }
 
+// Extract the role title from the email body when the subject doesn't
+// mention it (e.g. "Thank you for your interest in Circle and our open
+// Lead Product Designer.") — used as a fallback before config.defaultRole
+function extractRoleFromBody(bodyText) {
+  if (!bodyText) return null;
+  const clean = bodyText.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
+
+  const patterns = [
+    /received your application for (?:the\s+)?(.+?)\s+(?:position|role)\b/i,
+    /received your application for (.+?)(?:,\s*and\b|[.!]|$)/i,
+    /application for (?:a |an |the )?(.+?)\s+(?:position|role)\b/i,
+    /apply(?:ing)? (?:to|for) (?:our\s+|the\s+)?(.+?)\s+(?:position|role)\b/i,
+    /our open (.+?)(?:[.!,]|$)/i,
+  ];
+
+  for (const re of patterns) {
+    const m = clean.match(re);
+    if (m) {
+      const role = m[1].trim().replace(/\s*\(.*?\)\s*$/, '').trim();
+      if (role.length > 2 && role.length < 60 && !/^(the|a|an)$/i.test(role)) return role;
+    }
+  }
+  return null;
+}
+
 // Is this subject (or body) likely a real job application email?
 function isJobEmail(subject, bodyText) {
   const s = (subject + ' ' + (bodyText || '').slice(0, 1000)).toLowerCase();
@@ -340,7 +365,7 @@ for (const threadId of allThreadIds) {
   const parsed = parseSubject(subject);
 
   let company = fromCompany || parsed.company || 'Unknown';
-  let role = parsed.role || config.defaultRole;
+  let role = parsed.role || extractRoleFromBody(threadBodyText) || config.defaultRole;
 
   // Clean up role — if it looks like a company name (no design keywords), use as company
   const designKeywords = /designer|design|product|ux|ui|lead|head|creative|visual/i;
