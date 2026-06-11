@@ -189,12 +189,12 @@
     .table-toolbar {
       position: relative;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       align-items: center;
       gap: 12px;
       margin-bottom: 8px;
     }
-    .filter-toggle {
+    .search-toggle, .filter-toggle {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -208,8 +208,8 @@
       transition: color 0.12s;
       flex-shrink: 0;
     }
-    .filter-toggle:hover { color: var(--text); }
-    .filter-toggle svg { width: 16px; height: 16px; pointer-events: none; }
+    .search-toggle:hover, .filter-toggle:hover { color: var(--text); }
+    .search-toggle svg, .filter-toggle svg { width: 16px; height: 16px; pointer-events: none; }
 
     .filters { display: none; }
     .filters.open {
@@ -228,6 +228,57 @@
       z-index: 10;
       white-space: nowrap;
     }
+
+    .search-popover { display: none; }
+    .search-popover.open {
+      display: flex;
+      align-items: center;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      z-index: 10;
+      white-space: nowrap;
+    }
+    .search-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-input {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 26px 4px 10px;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--text);
+      border-radius: 999px;
+      outline: none;
+      width: 180px;
+    }
+    .search-input:focus { border-color: var(--dim); }
+    .search-clear {
+      display: none;
+      position: absolute;
+      right: 6px;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border: none;
+      background: none;
+      padding: 0;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 50%;
+    }
+    .search-clear svg { width: 11px; height: 11px; pointer-events: none; }
+    .search-clear:hover { color: var(--text); }
+    .search-clear.visible { display: flex; }
 
     .date-input {
       font-family: var(--mono);
@@ -481,6 +532,17 @@
 
   <!-- Table toolbar -->
   <div class="table-toolbar">
+    <div class="search-popover" id="search-popover">
+      <div class="search-input-wrap">
+        <input type="text" class="search-input" id="search-input" placeholder="Search company..." />
+        <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+    <button class="search-toggle" id="search-toggle" onclick="toggleSearch()" title="Search">
+      <svg id="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </button>
     <div class="filters" id="filters-row">
       <div class="filter-chips" id="status-filters"></div>
       <div class="filter-divider"></div>
@@ -521,6 +583,7 @@
     let allApps = [];
     let activeStatus = 'all';
     let dateFrom = null, dateTo = null;
+    let searchQuery = '';
 
     function fmtDate(iso) {
       if (!iso) return '—';
@@ -557,6 +620,7 @@
         if (activeStatus !== 'all' && a.status !== activeStatus) return false;
         if (dateFrom && a.dateApplied < dateFrom) return false;
         if (dateTo && a.dateApplied > dateTo) return false;
+        if (searchQuery && !a.company.toLowerCase().includes(searchQuery)) return false;
         return true;
       });
 
@@ -720,14 +784,39 @@
     }
 
     const FILTER_ICON = `<line x1="3" y1="6" x2="21" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line><line x1="9" y1="18" x2="15" y2="18"></line>`;
+    const SEARCH_ICON = `<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>`;
     const CLOSE_ICON = `<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>`;
 
-    function toggleFilters() {
+    function toggleFilters(forceClose) {
       const row = document.getElementById('filters-row');
       const icon = document.getElementById('filter-icon');
-      const isOpen = row.classList.toggle('open');
+      const isOpen = forceClose ? false : !row.classList.contains('open');
+      row.classList.toggle('open', isOpen);
       icon.innerHTML = isOpen ? CLOSE_ICON : FILTER_ICON;
     }
+
+    function toggleSearch(forceClose) {
+      const popover = document.getElementById('search-popover');
+      const icon = document.getElementById('search-icon');
+      const isOpen = forceClose ? false : !popover.classList.contains('open');
+      popover.classList.toggle('open', isOpen);
+      icon.innerHTML = isOpen ? CLOSE_ICON : SEARCH_ICON;
+      if (isOpen) {
+        const input = document.getElementById('search-input');
+        document.getElementById('search-clear').classList.toggle('visible', input.value.length > 0);
+        input.focus();
+      }
+    }
+
+    document.addEventListener('click', e => {
+      const path = e.composedPath();
+      if (!path.some(el => el.id === 'search-popover' || el.id === 'search-toggle')) {
+        toggleSearch(true);
+      }
+      if (!path.some(el => el.id === 'filters-row' || el.id === 'filter-toggle')) {
+        toggleFilters(true);
+      }
+    });
 
     function setStatus(s) {
       activeStatus = s;
@@ -908,6 +997,23 @@
         btn.disabled = false;
       }
     }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      searchQuery = '';
+      document.getElementById('search-clear').classList.remove('visible');
+      expandedIndex = null;
+      renderTable();
+      input.focus();
+    }
+
+    document.getElementById('search-input').addEventListener('input', e => {
+      searchQuery = e.target.value.trim().toLowerCase();
+      document.getElementById('search-clear').classList.toggle('visible', e.target.value.length > 0);
+      expandedIndex = null;
+      renderTable();
+    });
 
     loadConfig();
     loadData();
