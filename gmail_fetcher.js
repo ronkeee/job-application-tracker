@@ -43,6 +43,18 @@ const ATS_DOMAINS = ['greenhouse.io', 'greenhouse-mail.io', 'lever.co', 'ashbyhq
   'bamboohr.com', 'recruitee.com', 'workable.com', 'personio.com', 'hire.com',
   'breezy.hr', 'comeet-notifications.com', 'comeet.co'];
 
+// Some ATS platforms (e.g. Comeet) put the company name directly in the
+// sending subdomain — "notifications@guardio.comeet-notifications.com" — so
+// the company can be recovered even when the sender display name is just a
+// recruiter's personal name
+function extractCompanyFromATSSubdomain(emailAddress) {
+  const match = emailAddress.match(/@([\w-]+)\.(?:comeet-notifications\.com|comeet\.co)$/i);
+  if (!match) return null;
+  const name = match[1];
+  if (name.length <= 2) return null;
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 function extractCompanyFromEmail(emailAddress) {
   const match = emailAddress.match(/@([\w.-]+)/);
   if (!match) return null;
@@ -322,7 +334,8 @@ for (const threadId of allThreadIds) {
   // name, not the company — fall back to parsing the subject in that case
   const looksLikePersonName = fromDisplayName && /^[A-Za-z]+(\s+[A-Za-z]+)*\s*-\s*[A-Za-z]+$/.test(fromDisplayName);
   const fromCompany = isATS
-    ? (fromDisplayName && !looksLikePersonName && !/(greenhouse|lever|ashby|noreply|no.reply|team|hiring|recruit)/i.test(fromDisplayName) ? fromDisplayName : null)
+    ? (extractCompanyFromATSSubdomain(fromEmail)
+      || (fromDisplayName && !looksLikePersonName && !/(greenhouse|lever|ashby|noreply|no.reply|team|hiring|recruit)/i.test(fromDisplayName) ? fromDisplayName : null))
     : extractCompanyFromEmail(fromEmail);
   const parsed = parseSubject(subject);
 
