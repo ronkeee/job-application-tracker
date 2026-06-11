@@ -3,6 +3,8 @@
 A local dashboard that reads your Gmail for job application emails and tracks
 their status (pending, interview, declined, offer) over time.
 
+![Job Application Tracker dashboard](docs/screenshot.png)
+
 ## Setup
 
 ### 1. Install dependencies
