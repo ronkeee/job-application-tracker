@@ -312,14 +312,25 @@
       margin: 0 0;
     }
     .expand-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      display: flex;
+      flex-wrap: wrap;
       gap: 32px;
+    }
+    .expand-grid > div {
+      flex: 1 1 200px;
+      min-width: 200px;
     }
     .link-list {
       display: flex;
       flex-direction: column;
       gap: 6px;
+    }
+    .expand-col-preview {
+      flex: 1 1 40%;
+      max-width: 40%;
+    }
+    .expand-col-preview .link-list {
+      margin-top: 10px;
     }
     .link-list a {
       font-size: 11.5px;
@@ -334,8 +345,9 @@
       text-decoration: underline;
     }
     .link-list a::after {
-      content: ' ↗';
-      color: var(--dim);
+      content: ' ›';
+      color: var(--bright);
+      font-weight: 700;
     }
     .expand-block-label {
       font-size: 9px;
@@ -612,9 +624,13 @@
             <td class="expand-cell" colspan="6">
               <div class="expand-inner">
                 <div class="expand-grid">
-                  <div>
+                  <div class="expand-col-preview">
                     <div class="expand-block-label">Last Email Preview</div>
                     <div class="expand-body">${escHtml(a.bodyExcerpt || '').slice(0, 600)}</div>
+                    ${hasLinks ? `
+                    <div class="link-list">
+                      ${a.links.map(l => `<a href="${escHtml(l.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${escHtml(l.label)}</a>`).join('')}
+                    </div>` : ''}
                   </div>
                   ${hasRejection ? `
                   <div>
@@ -622,13 +638,6 @@
                     <div class="rejection-box">
                       <span class="rj-label">Why they declined</span>
                       ${escHtml(a.rejectionReason)}
-                    </div>
-                  </div>` : ''}
-                  ${hasLinks ? `
-                  <div>
-                    <div class="expand-block-label">Links from Email</div>
-                    <div class="link-list">
-                      ${a.links.map(l => `<a href="${escHtml(l.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${escHtml(l.label)}</a>`).join('')}
                     </div>
                   </div>` : ''}
                   <div>
