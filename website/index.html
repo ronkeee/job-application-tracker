@@ -848,6 +848,12 @@
           `${interviews} interview${interviews !== 1 ? 's' : ''} on the calendar. ${total} applications sent, and it's working 🎯`,
           `Momentum check: ${interviews} interview${interviews !== 1 ? 's' : ''} from ${total} applications. Keep that energy going ⚡`,
         ];
+        if (pending > 0) {
+          pool.push(
+            `${interviews} interview${interviews !== 1 ? 's' : ''} locked in, and ${pending} more application${pending !== 1 ? 's' : ''} still cooking. Let's see what they bring 👀`,
+            `${interviews} interview${interviews !== 1 ? 's' : ''} underway, ${pending} application${pending !== 1 ? 's' : ''} still in the oven. Plenty more could turn into this 👀`,
+          );
+        }
       } else if (pending > 0) {
         pool = [
           `${total} applications sent, ${pending} still awaiting a reply. Great consistency, keep sending those CVs 🚀`,

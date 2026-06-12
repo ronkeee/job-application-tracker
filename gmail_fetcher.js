@@ -309,14 +309,21 @@ const since = new Date();
 since.setDate(since.getDate() - lookbackDays);
 const afterDate = `${since.getFullYear()}/${String(since.getMonth()+1).padStart(2,'0')}/${String(since.getDate()).padStart(2,'0')}`;
 
-// Search both sent (applications you sent) and inbox (replies from companies)
+// Search both sent (applications you sent) and inbox (replies from companies).
+// Gmail's search API can silently drop matches — especially very recent
+// messages — when an OR group has too many clauses, so each query below is
+// kept short (2-3 terms) rather than one big OR group.
 const queries = [
   // Sent applications
   `in:sent after:${afterDate} (application OR "applying for" OR "cover letter" OR "I am applying" OR "senior product designer")`,
   // Company replies / confirmations
-  `in:inbox after:${afterDate} (application received OR "thank you for applying" OR "thanks for applying" OR "your application" OR interview OR "next steps" OR "we'd like to" OR "not moving forward" OR "unfortunately")`,
+  `in:inbox after:${afterDate} (application received OR "thank you for applying")`,
+  `in:inbox after:${afterDate} ("thanks for applying" OR "your application")`,
+  `in:inbox after:${afterDate} ("not moving forward" OR "unfortunately")`,
+  `in:inbox after:${afterDate} ("next steps")`,
   // Interview / scheduling emails (separate query — Gmail's OR grouping above can miss these)
-  `in:inbox after:${afterDate} (interview OR "intro call" OR "schedule a call" OR "select a time" OR "phone screen")`,
+  `in:inbox after:${afterDate} (interview OR "intro call")`,
+  `in:inbox after:${afterDate} ("schedule a call" OR "select a time" OR "phone screen")`,
 ];
 
 const allThreadIds = new Set();
