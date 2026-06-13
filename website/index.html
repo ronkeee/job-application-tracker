@@ -534,7 +534,7 @@
   <div class="table-toolbar">
     <div class="search-popover" id="search-popover">
       <div class="search-input-wrap">
-        <input type="text" class="search-input" id="search-input" placeholder="Search company..." />
+        <input type="text" class="search-input" id="search-input" placeholder="Search by company" />
         <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
@@ -673,7 +673,7 @@
       renderSortIndicators();
 
       if (!apps.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="no-results">No applications match the current filters.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="no-results">No applications match these filters. Try adjusting or clearing them.</td></tr>`;
         return;
       }
 
@@ -834,49 +834,67 @@
 
       const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+      const s = (n) => (n !== 1 ? 's' : '');
+
       let pool;
       if (offers > 0) {
         pool = [
-          `You've got ${offers} job offer${offers !== 1 ? 's' : ''} on the table! Huge congrats, ${total} applications led you here 🎉`,
-          `${offers} offer${offers !== 1 ? 's' : ''} in hand out of ${total} applications. All that effort just paid off 🥳`,
-          `Offer${offers !== 1 ? 's' : ''} secured: ${offers}. Time to celebrate — ${total} applications and counting 🍾`,
+          `You've got ${offers} job offer${s(offers)} on the table! Huge congrats, ${total} applications led you here 🎉`,
+          `${offers} offer${s(offers)} in hand out of ${total} applications. All that effort just paid off 🥳`,
+          `Offer${s(offers)} secured: ${offers}. Time to celebrate — ${total} applications and counting 🍾`,
+          `This is it: ${offers} offer${s(offers)} on the table after ${total} applications. You earned this 🏆`,
+          `${offers} yes${offers !== 1 ? 'es' : ''} after ${total} applications. Go celebrate, you've more than earned it 🥂`,
         ];
       } else if (interviews > 0) {
         pool = [
-          `${interviews} interview${interviews !== 1 ? 's' : ''} in progress out of ${total} applications. You're building momentum, keep it up 💪`,
-          `${interviews} conversation${interviews !== 1 ? 's' : ''} lined up out of ${total} applications. Go show them what you've got 🔥`,
-          `${interviews} interview${interviews !== 1 ? 's' : ''} on the calendar. ${total} applications sent, and it's working 🎯`,
-          `Momentum check: ${interviews} interview${interviews !== 1 ? 's' : ''} from ${total} applications. Keep that energy going ⚡`,
+          `${interviews} interview${s(interviews)} in progress out of ${total} applications. You're building momentum, keep it up 💪`,
+          `${interviews} conversation${s(interviews)} lined up out of ${total} applications. Go show them what you've got 🔥`,
+          `${interviews} interview${s(interviews)} on the calendar. ${total} applications sent, and it's working 🎯`,
+          `Momentum check: ${interviews} interview${s(interviews)} from ${total} applications. Keep that energy going ⚡`,
+          `${interviews} door${s(interviews)} open after ${total} applications. Walk through with confidence 🚪`,
+          `Your ${total} applications turned into ${interviews} real conversation${s(interviews)}. That's the system working 🎯`,
+          `${interviews} interview${s(interviews)} booked. ${total} applications sent — proof that consistency pays off 💪`,
         ];
         if (pending > 0) {
           pool.push(
-            `${interviews} interview${interviews !== 1 ? 's' : ''} locked in, and ${pending} more application${pending !== 1 ? 's' : ''} still cooking. Let's see what they bring 👀`,
-            `${interviews} interview${interviews !== 1 ? 's' : ''} underway, ${pending} application${pending !== 1 ? 's' : ''} still in the oven. Plenty more could turn into this 👀`,
+            `${interviews} interview${s(interviews)} locked in, and ${pending} more application${s(pending)} still cooking. Let's see what they bring 👀`,
+            `${interviews} interview${s(interviews)} underway, ${pending} application${s(pending)} still in the oven. Plenty more could turn into this 👀`,
+            `${interviews} interview${s(interviews)} on deck, ${pending} more application${s(pending)} waiting in the wings. More good news could be coming 🤞`,
           );
         }
       } else if (pending > 0) {
         pool = [
           `${total} applications sent, ${pending} still awaiting a reply. Great consistency, keep sending those CVs 🚀`,
-          `${pending} application${pending !== 1 ? 's' : ''} out there waiting to hear back. Stay patient, stay applying 🌱`,
+          `${pending} application${s(pending)} out there waiting to hear back. Stay patient, stay applying 🌱`,
           `${total} applications and counting. The right reply is just a matter of time, keep going 🚀`,
           `${pending} in the pipeline, ${total} sent overall. Consistency beats intensity, keep it steady 🧭`,
+          `${pending} inbox${s(pending)} waiting to surprise you. Until then, keep the applications flowing ✉️`,
+          `${total} applications out in the world, ${pending} still warming up. Good things take a beat 🌤`,
+          `${pending} application${s(pending)} quietly making their way through the process. Keep that pipeline full 🔄`,
         ];
       } else if (declined > 0 && total > 0) {
         pool = [
           `${total} applications sent so far. Every "no" gets you closer to the right "yes", keep going 💪`,
-          `${declined} answer${declined !== 1 ? 's' : ''} didn't land, but ${total} applications shows real persistence. Onward 🌤`,
+          `${declined} answer${s(declined)} didn't land, but ${total} applications shows real persistence. Onward 🌤`,
           `Setbacks happen. ${total} applications in, and you're still in the game — keep pushing 🔥`,
+          `${declined} door${s(declined)} closed, but ${total} applications means plenty more to knock on. Next 🚪`,
+          `Not every application lands, and that's okay. ${total} sent so far — your momentum is the win 🌱`,
+          `${total} applications deep. The "no"s sting less the closer you get to the right "yes" 🧭`,
         ];
       } else if (total > 0) {
         pool = [
           `${total} applications sent so far. Every day you keep going is a step forward, keep it up 💪`,
-          `${total} application${total !== 1 ? 's' : ''} down. Strong start — momentum builds from here 🚀`,
+          `${total} application${s(total)} down. Strong start — momentum builds from here 🚀`,
           `${total} applications sent. Small steps add up, keep the streak going 🌱`,
+          `${total} applications out the door. You're officially in motion — keep that energy 🔋`,
+          `${total} application${s(total)} and growing. Future-you will thank present-you for this 🌅`,
         ];
       } else {
         pool = [
           `No applications yet. Today's a great day to send your first one 🚀`,
           `Your job search starts here. Sync your inbox and let's get moving 💪`,
+          `A blank slate. Your first application is the hardest one — let's get it sent 🌱`,
+          `Nothing logged yet, but every search starts with one click. Sync up and dive in 🔍`,
         ];
       }
 
@@ -941,7 +959,7 @@
         .then(render)
         .catch(() => {
           document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="7" class="empty">Run <code>bun gmail_fetcher.js</code> to sync.</td></tr>`;
+            `<tr><td colspan="7" class="empty">No applications yet. Click <strong>Sync Now</strong> to fetch from Gmail.</td></tr>`;
         });
     }
 
@@ -974,8 +992,9 @@
         clearInterval(syncTimer);
 
         if (!res.ok || !data.ok) {
+          console.error('Sync failed:', data.error);
           toast.className = 'sync-toast error';
-          toast.textContent = `Sync failed: ${data.error || 'unknown error'}`;
+          toast.textContent = `Sync failed. Check the server logs and try again.`;
           label.textContent = 'Sync Now';
         } else {
           toast.className = 'sync-toast success';
@@ -990,8 +1009,9 @@
         }, 5000);
       } catch (err) {
         clearInterval(syncTimer);
+        console.error('Sync failed:', err);
         toast.className = 'sync-toast error';
-        toast.textContent = `Sync failed: ${err.message}`;
+        toast.textContent = `Sync failed. Check your connection and try again.`;
         label.textContent = 'Sync Now';
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => {
