@@ -338,11 +338,11 @@
 
     /* ── Table ── */
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .col-company { width: 11%; }
-    .col-role { width: 13%; }
-    th:nth-child(3), .col-date { width: 10%; }
-    .col-last { width: 57%; }
-    .col-status { width: 9%; }
+    col.col-company { width: 11%; }
+    col.col-role { width: 12%; }
+    col.col-date { width: 9%; }
+    col.col-last { width: 59%; }
+    col.col-status { width: 9%; }
     thead tr { border-bottom: 1px solid var(--border); }
     thead th {
       font-size: 10px;
@@ -378,12 +378,12 @@
     tbody td:first-child { padding-left: 8px; }
     tbody td:last-child { padding-right: 8px; }
 
-    .col-company { font-weight: 700; color: var(--bright); font-size: 13px; white-space: nowrap; }
+    .col-company { font-weight: 700; color: var(--bright); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .col-role { color: var(--text); font-size: 12px; }
     .col-date { font-size: 11px; white-space: nowrap; }
     .date-val { color: var(--text); }
-    .col-last { font-size: 11px; max-width: 200px; }
-    .last-subj { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: block; }
+    .col-last { font-size: 11px; }
+    .last-subj { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
     .last-date { font-size: 10px; color: var(--dim); margin-top: 1px; }
     .col-status { text-align: right; }
 
@@ -779,6 +779,13 @@
   </div>
 
   <table>
+    <colgroup>
+      <col class="col-company">
+      <col class="col-role">
+      <col class="col-date">
+      <col class="col-last">
+      <col class="col-status">
+    </colgroup>
     <thead>
       <tr id="table-head-row">
         <th>Company</th>
