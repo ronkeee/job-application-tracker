@@ -340,8 +340,8 @@
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .col-company { width: 14%; }
     .col-role { width: 18%; }
-    th:nth-child(3), th:nth-child(4), .col-date { width: 11%; }
-    .col-last { width: 36%; }
+    th:nth-child(3), .col-date { width: 11%; }
+    .col-last { width: 48%; }
     .col-status { width: 9%; }
     thead tr { border-bottom: 1px solid var(--border); }
     thead th {
@@ -783,7 +783,6 @@
       <tr id="table-head-row">
         <th>Company</th>
         <th>Role</th>
-        <th class="sortable" data-sort="dateApplied" onclick="setSort('dateApplied')">Sent <span class="sort-arrow"></span></th>
         <th class="sortable" data-sort="lastReply" onclick="setSort('lastReply')">Received <span class="sort-arrow"></span></th>
         <th>Last Email</th>
         <th class="sortable" data-sort="status" onclick="setSort('status')" style="text-align:right">Status <span class="sort-arrow"></span></th>
@@ -898,7 +897,7 @@
       renderSortIndicators();
 
       if (!apps.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="no-results">No applications match these filters. Try adjusting or clearing them.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="no-results">No applications match these filters. Try adjusting or clearing them.</td></tr>`;
         return;
       }
 
@@ -910,7 +909,7 @@
         const isOpen = expandedIndex === i;
         const expandContent = hasBody ? `
           <tr class="expand-row${isOpen ? ' open' : ''}${tableAnimated ? ' no-anim' : ''}" id="expand-${i}">
-            <td class="expand-cell" colspan="6">
+            <td class="expand-cell" colspan="5">
               <div class="expand-inner">
                 <div class="expand-grid">
                   <div class="expand-col-preview">
@@ -950,9 +949,6 @@
           <tr class="data-row${isOpen ? ' expanded' : ''}${tableAnimated ? ' no-anim' : ''}" onclick="toggle(${i})" id="row-${i}" style="animation-delay:${0.3 + i * 0.06}s">
             <td class="col-company">${a.company}</td>
             <td class="col-role">${a.role}</td>
-            <td class="col-date">
-              <span class="date-val">${fmtDate(a.dateApplied)}</span>
-            </td>
             <td class="col-date">
               <span class="date-val">${fmtDate(a.lastReply)}</span>
             </td>
@@ -1355,7 +1351,7 @@
         .then(render)
         .catch(() => {
           document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="7" class="empty">No applications yet. Click <strong>Sync Now</strong> to fetch from Gmail.</td></tr>`;
+            `<tr><td colspan="5" class="empty">No applications yet. Click <strong>Sync Now</strong> to fetch from Gmail.</td></tr>`;
         });
     }
 
