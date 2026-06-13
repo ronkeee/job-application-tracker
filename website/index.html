@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    (function () {
+      const stored = localStorage.getItem('theme');
+      const theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Application Status // Ron Keren</title>
@@ -33,6 +40,26 @@
       /* Soft variant for the rejection-reason text panel (readable on light bg) */
       --rejected-soft-bg:   #f1f0ee;
       --rejected-soft-text: #57534e;
+
+      /* Text color on top of saturated status/accent fills — same in both themes */
+      --on-accent: #fff;
+      /* Default (inactive) filter chip background */
+      --chip-bg: #fff;
+    }
+
+    html[data-theme="dark"] {
+      --bg:       #18181b;
+      --surface:  #232326;
+      --border:   #3a3a3e;
+      --dim:      #6b6b68;
+      --muted:    #9a9a96;
+      --text:     #e4e4e1;
+      --bright:   #fafaf9;
+
+      --rejected-soft-bg:   #2a2a2d;
+      --rejected-soft-text: #b0b0ac;
+
+      --chip-bg: #2a2a2d;
     }
 
     html, body { background: var(--bg); }
@@ -128,10 +155,10 @@
       font-weight: 700;
       line-height: 1;
     }
-    .status-bar .seg.s-interview { background: var(--interview-bg); border-color: var(--interview-bd); color: #fff; }
-    .status-bar .seg.s-offer     { background: var(--offer-bg);     border-color: var(--offer-bd);     color: #fff; }
-    .status-bar .seg.s-pending   { background: var(--pending-bg);   border-color: var(--pending-bd);   color: #fff; }
-    .status-bar .seg.s-rejected  { background: var(--rejected-bg);  border-color: var(--rejected-bd);  color: #fff; }
+    .status-bar .seg.s-interview { background: var(--interview-bg); border-color: var(--interview-bd); color: var(--on-accent); }
+    .status-bar .seg.s-offer     { background: var(--offer-bg);     border-color: var(--offer-bd);     color: var(--on-accent); }
+    .status-bar .seg.s-pending   { background: var(--pending-bg);   border-color: var(--pending-bd);   color: var(--on-accent); }
+    .status-bar .seg.s-rejected  { background: var(--rejected-bg);  border-color: var(--rejected-bd);  color: var(--on-accent); }
 
     /* ── Intro animations ── */
     @keyframes segGrowIn {
@@ -169,22 +196,22 @@
       padding: 4px 10px;
       border-radius: 4px;
       border: 1px solid var(--border);
-      background: white;
+      background: var(--chip-bg);
       color: var(--muted);
       cursor: pointer;
       letter-spacing: 0.04em;
       transition: all 0.12s;
     }
     .chip:hover { border-color: var(--dim); color: var(--text); }
-    .chip.chip-all.active { background: var(--bright); color: white; border-color: var(--bright); }
+    .chip.chip-all.active { background: var(--bright); color: var(--bg); border-color: var(--bright); }
 
     /* Status filter chips — filled with the status color */
-    .chip.chip-interview { background: var(--interview-bg); color: #fff; border-color: var(--interview-bd); }
-    .chip.chip-pending   { background: var(--pending-bg);   color: #fff; border-color: var(--pending-bd); }
-    .chip.chip-rejected  { background: var(--rejected-bg);  color: #fff; border-color: var(--rejected-bd); }
-    .chip.chip-offer     { background: var(--offer-bg);     color: #fff; border-color: var(--offer-bd); }
+    .chip.chip-interview { background: var(--interview-bg); color: var(--on-accent); border-color: var(--interview-bd); }
+    .chip.chip-pending   { background: var(--pending-bg);   color: var(--on-accent); border-color: var(--pending-bd); }
+    .chip.chip-rejected  { background: var(--rejected-bg);  color: var(--on-accent); border-color: var(--rejected-bd); }
+    .chip.chip-offer     { background: var(--offer-bg);     color: var(--on-accent); border-color: var(--offer-bd); }
     .chip[class*="chip-"]:not(.chip-all) { opacity: 0.4; }
-    .chip[class*="chip-"]:not(.chip-all):hover { opacity: 0.7; color: #fff; }
+    .chip[class*="chip-"]:not(.chip-all):hover { opacity: 0.7; color: var(--on-accent); }
     .chip[class*="chip-"]:not(.chip-all).active { opacity: 1; box-shadow: 0 0 0 2px var(--bright) inset; }
 
     .filter-divider { width: 1px; height: 20px; background: var(--border); }
@@ -445,10 +472,10 @@
       border-radius: 4px;
       white-space: nowrap;
     }
-    .badge-pending   { background: var(--pending-bg);   color: #fff; }
-    .badge-interview { background: var(--interview-bg); color: #fff; }
-    .badge-rejected  { background: var(--rejected-bg);  color: #fff; }
-    .badge-offer     { background: var(--offer-bg);     color: #fff; }
+    .badge-pending   { background: var(--pending-bg);   color: var(--on-accent); }
+    .badge-interview { background: var(--interview-bg); color: var(--on-accent); }
+    .badge-rejected  { background: var(--rejected-bg);  color: var(--on-accent); }
+    .badge-offer     { background: var(--offer-bg);     color: var(--on-accent); }
 
     .badge-btn {
       border: none;
@@ -551,6 +578,27 @@
     }
     .sync-toast.error { color: var(--rejected); }
     .sync-toast.success { color: var(--interview); }
+
+    /* ── Theme toggle ── */
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--muted);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { color: var(--bright); border-color: var(--dim); }
+    .theme-toggle svg { width: 14px; height: 14px; pointer-events: none; }
+    .theme-toggle .icon-moon { display: none; }
+    html[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+    html[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
   </style>
 </head>
 <body>
@@ -564,6 +612,10 @@
     <div class="header-meta">
       <div class="header-meta-row">
         <span id="sync-line">—</span>
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
         <button class="sync-btn" id="sync-btn" onclick="syncNow()">
           <span class="spinner"></span>
           <span class="sync-label" id="sync-label">Sync Now</span>
@@ -1162,6 +1214,17 @@
       expandedIndex = null;
       renderTable();
     });
+
+    function toggleTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+      }
+    }
 
     loadConfig();
     loadData();
