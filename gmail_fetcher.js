@@ -43,6 +43,10 @@ const ATS_DOMAINS = ['greenhouse.io', 'greenhouse-mail.io', 'lever.co', 'ashbyhq
   'bamboohr.com', 'recruitee.com', 'workable.com', 'personio.com', 'hire.com',
   'breezy.hr', 'comeet-notifications.com', 'comeet.co'];
 
+// Senders that match the job-keyword search but are never job applications
+// (newsletters, marketing tools, account notices)
+const NON_JOB_DOMAINS = ['google.com', 'tldrnewsletter.com', 'amplemarket.com', 'riverside.fm', 'producthunt.com'];
+
 // Some ATS platforms (e.g. Comeet) put the company name directly in the
 // sending subdomain — "notifications@guardio.comeet-notifications.com" — so
 // the company can be recovered even when the sender display name is just a
@@ -67,6 +71,15 @@ function extractCompanyFromEmail(emailAddress) {
   const name = clean.split('.')[0];
   if (name.length <= 2) return null; // skip "us", "eu" etc
   return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+// Strip leading "Re:" / "Fwd:" / "Fw:" prefixes (possibly repeated)
+function stripReplyPrefix(subject) {
+  let s = subject.trim();
+  while (/^(re|fwd?):\s*/i.test(s)) {
+    s = s.replace(/^(re|fwd?):\s*/i, '').trim();
+  }
+  return s;
 }
 
 // Parse subject → { company, role }
@@ -298,7 +311,7 @@ function formatDate(ms) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 const isFirstSync = !fs.existsSync(OUTPUT_PATH);
-const lookbackDays = isFirstSync ? 60 : 7;
+const lookbackDays = process.env.LOOKBACK_DAYS ? Number(process.env.LOOKBACK_DAYS) : (isFirstSync ? 30 : 7);
 console.log(`🔍 Searching Gmail for job applications (last ${lookbackDays} days${isFirstSync ? ', first sync' : ''})...`);
 
 const profile = await gmail.users.getProfile({ userId: 'me' });
@@ -344,10 +357,19 @@ for (const threadId of allThreadIds) {
 
   // Get the earliest message in thread
   const firstMsg = messages[0];
-  const subject = getHeader(firstMsg.payload.headers, 'subject');
+  const subject = stripReplyPrefix(getHeader(firstMsg.payload.headers, 'subject'));
   const from = getHeader(firstMsg.payload.headers, 'from');
   const to = getHeader(firstMsg.payload.headers, 'to');
   const date = formatDate(firstMsg.internalDate);
+
+  // Extract company + role
+  const fromEmail = from.match(/<(.+?)>/)?.[1] || from;
+
+  // Skip senders that are never job applications (newsletters, account notices, etc.)
+  if (NON_JOB_DOMAINS.some(d => fromEmail.toLowerCase().includes(d))) {
+    console.log(`  ⏭  Skipping (non-job sender domain): "${subject.slice(0,60)}"`);
+    continue;
+  }
 
   // Skip if subject/body doesn't look like a job email
   const threadBodyText = messages.map(m => getBody(m.payload)).join(' ').slice(0, 2000);
@@ -357,8 +379,6 @@ for (const threadId of allThreadIds) {
   }
   console.log(`  📩 Subject: "${subject}" | From: ${from.slice(0,50)}`);
 
-  // Extract company + role
-  const fromEmail = from.match(/<(.+?)>/)?.[1] || from;
   // For ATS emails, try the display name (e.g. "Guardio <no-reply@comeet...>")
   const fromDisplayName = from.match(/^([^<@]+?)\s*</)?.[1]?.trim();
   const isATS = ATS_DOMAINS.some(ats => fromEmail.includes(ats));
@@ -370,6 +390,7 @@ for (const threadId of allThreadIds) {
       || (fromDisplayName && !looksLikePersonName && !/(greenhouse|lever|ashby|noreply|no.reply|team|hiring|recruit)/i.test(fromDisplayName) ? fromDisplayName : null))
     : extractCompanyFromEmail(fromEmail);
   const parsed = parseSubject(subject);
+  if (parsed.company && /^(re|fwd?)$/i.test(parsed.company)) parsed.company = null;
 
   let company = fromCompany || parsed.company || 'Unknown';
   let role = parsed.role || extractRoleFromBody(threadBodyText) || config.defaultRole;
@@ -457,15 +478,27 @@ for (const app of applications) {
 }
 
 let merged = Array.from(deduped.values());
+let removedCompanies = [];
 
 // Preserve manually-overridden statuses, and carry forward applications that
 // weren't found in this scan's lookback window (e.g. older threads), so a
 // re-sync never silently drops or overwrites them.
 if (fs.existsSync(OUTPUT_PATH)) {
   const previous = JSON.parse(fs.readFileSync(OUTPUT_PATH, 'utf8'));
+  removedCompanies = previous.removedCompanies || [];
+  const removedSet = new Set(removedCompanies);
   const previousByCompany = new Map(
     (previous.applications || []).map((a) => [a.company.toLowerCase(), a])
   );
+
+  // Drop anything matching a permanently-removed company before re-adding it
+  merged = merged.filter((app) => {
+    if (removedSet.has(app.company.toLowerCase())) {
+      console.log(`  🚫 Skipping ${app.company} (permanently removed)`);
+      return false;
+    }
+    return true;
+  });
 
   merged = merged.map((app) => {
     const prev = previousByCompany.get(app.company.toLowerCase());
@@ -477,8 +510,12 @@ if (fs.existsSync(OUTPUT_PATH)) {
   });
 
   const seenCompanies = new Set(merged.map((a) => a.company.toLowerCase()));
+  const seenThreadIds = new Set(merged.map((a) => a.threadId));
   for (const prev of previousByCompany.values()) {
-    if (!seenCompanies.has(prev.company.toLowerCase())) {
+    // Skip a previous entry if its thread was already (re)classified this run
+    // under a different company name — avoids stale duplicates (e.g. an old
+    // "Unknown" entry for a thread now correctly identified as "Bettercharge")
+    if (!seenCompanies.has(prev.company.toLowerCase()) && !seenThreadIds.has(prev.threadId)) {
       merged.push(prev);
     }
   }
@@ -487,6 +524,6 @@ if (fs.existsSync(OUTPUT_PATH)) {
 // Sort newest first
 merged.sort((a, b) => b.dateApplied.localeCompare(a.dateApplied));
 
-const output = { lastFetched: new Date().toISOString(), applications: merged };
+const output = { lastFetched: new Date().toISOString(), applications: merged, removedCompanies };
 fs.writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2));
 console.log(`\n✅ Saved ${merged.length} applications (from ${applications.length} threads) to ${OUTPUT_PATH}`);

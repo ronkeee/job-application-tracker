@@ -25,8 +25,13 @@ Bun.serve({
       }
       syncing = true;
       const start = Date.now();
+      let days;
       try {
-        const result = await runFetcher();
+        const body = await req.json();
+        days = body?.days;
+      } catch {}
+      try {
+        const result = await runFetcher(days);
         const duration = ((Date.now() - start) / 1000).toFixed(1);
         return Response.json({ ok: true, duration, ...result });
       } catch (err) {
@@ -68,6 +73,53 @@ Bun.serve({
       return Response.json({ ok: true });
     }
 
+    // ── Permanent removal ────────────────────────────────────────────────
+    if (url.pathname === '/api/remove' && req.method === 'POST') {
+      let body;
+      try {
+        body = await req.json();
+      } catch {
+        return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+      }
+
+      const { threadId } = body;
+      if (!threadId) {
+        return Response.json({ error: 'Invalid threadId' }, { status: 400 });
+      }
+
+      const data = JSON.parse(fs.readFileSync(APPLICATIONS_PATH, 'utf8'));
+      const idx = data.applications.findIndex((a) => a.threadId === threadId);
+      if (idx === -1) {
+        return Response.json({ error: 'Application not found' }, { status: 404 });
+      }
+
+      const [removed] = data.applications.splice(idx, 1);
+
+      data.removedCompanies = data.removedCompanies || [];
+      const key = removed.company.toLowerCase();
+      if (!data.removedCompanies.includes(key)) {
+        data.removedCompanies.push(key);
+      }
+
+      fs.writeFileSync(APPLICATIONS_PATH, JSON.stringify(data, null, 2));
+
+      return Response.json({ ok: true });
+    }
+
+    // ── Reset all manual changes ────────────────────────────────────────
+    if (url.pathname === '/api/reset' && req.method === 'POST') {
+      const data = JSON.parse(fs.readFileSync(APPLICATIONS_PATH, 'utf8'));
+
+      for (const app of data.applications) {
+        delete app.statusOverride;
+      }
+      data.removedCompanies = [];
+
+      fs.writeFileSync(APPLICATIONS_PATH, JSON.stringify(data, null, 2));
+
+      return Response.json({ ok: true });
+    }
+
     if (url.pathname === '/api/config') {
       const configPath = path.join(ROOT, 'config.json');
       const examplePath = path.join(ROOT, 'config.example.json');
@@ -95,9 +147,10 @@ Bun.serve({
 
 const FETCH_TIMEOUT_MS = 60_000;
 
-function runFetcher() {
+function runFetcher(days) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('bun', ['gmail_fetcher.js'], { cwd: ROOT });
+    const env = days ? { ...process.env, LOOKBACK_DAYS: String(days) } : process.env;
+    const proc = spawn('bun', ['gmail_fetcher.js'], { cwd: ROOT, env });
     let output = '';
     proc.stdout.on('data', (d) => (output += d.toString()));
     proc.stderr.on('data', (d) => (output += d.toString()));
