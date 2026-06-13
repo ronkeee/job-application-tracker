@@ -344,6 +344,8 @@
     tbody tr.data-row.expanded { border-bottom: none; background: var(--surface); }
     tbody tr.expand-row { display: none; border-bottom: 1px solid var(--border); background: var(--surface); }
     tbody tr.expand-row.open { display: table-row; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr.data-row:nth-last-child(2) { border-bottom: none; }
 
     tbody td { padding: 13px 14px; vertical-align: middle; }
     tbody td:first-child { padding-left: 8px; }
@@ -500,7 +502,6 @@
       justify-content: space-between;
       color: var(--dim);
       font-size: 11px;
-      border-top: 1px solid var(--border);
       padding-top: 16px;
     }
 
