@@ -455,11 +455,6 @@
       transition: filter 0.12s;
     }
     .badge-btn:hover { filter: brightness(1.15); }
-    .badge-pin {
-      margin-left: 4px;
-      font-size: 9px;
-      vertical-align: middle;
-    }
 
     /* ── Status override menu ── */
     .status-menu {
@@ -658,8 +653,7 @@
     }
 
     function badge(a) {
-      const pin = a.statusOverride ? `<span class="badge-pin" title="Manually set — won't change on sync">📌</span>` : '';
-      return `<button type="button" class="badge badge-${a.status} badge-btn" onclick="openStatusMenu(event, '${escHtml(a.threadId)}')">${STATUS_LABELS[a.status] || a.status}${pin}</button>`;
+      return `<button type="button" class="badge badge-${a.status} badge-btn" onclick="openStatusMenu(event, '${escHtml(a.threadId)}')" title="${a.statusOverride ? "Manually set — won't change on sync" : ''}">${STATUS_LABELS[a.status] || a.status}</button>`;
     }
 
     // Intro animation should only play once, on initial load — not on
@@ -794,7 +788,7 @@
       const active = apps.filter(a => a.status !== 'rejected').length;
       const rejected = apps.filter(a => a.status === 'rejected').length;
       document.getElementById('footer-right').textContent =
-        `${active} active · ${rejected} declined · synced from Gmail`;
+        `${active} active    ${rejected} declined    synced from Gmail`;
 
       tableAnimated = true;
     }
