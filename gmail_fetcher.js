@@ -456,7 +456,33 @@ for (const app of applications) {
   }
 }
 
-const merged = Array.from(deduped.values());
+let merged = Array.from(deduped.values());
+
+// Preserve manually-overridden statuses, and carry forward applications that
+// weren't found in this scan's lookback window (e.g. older threads), so a
+// re-sync never silently drops or overwrites them.
+if (fs.existsSync(OUTPUT_PATH)) {
+  const previous = JSON.parse(fs.readFileSync(OUTPUT_PATH, 'utf8'));
+  const previousByCompany = new Map(
+    (previous.applications || []).map((a) => [a.company.toLowerCase(), a])
+  );
+
+  merged = merged.map((app) => {
+    const prev = previousByCompany.get(app.company.toLowerCase());
+    if (prev?.statusOverride) {
+      console.log(`  📌 Keeping manual status for ${app.company}: ${prev.status}`);
+      return { ...app, status: prev.status, statusOverride: true };
+    }
+    return app;
+  });
+
+  const seenCompanies = new Set(merged.map((a) => a.company.toLowerCase()));
+  for (const prev of previousByCompany.values()) {
+    if (!seenCompanies.has(prev.company.toLowerCase())) {
+      merged.push(prev);
+    }
+  }
+}
 
 // Sort newest first
 merged.sort((a, b) => b.dateApplied.localeCompare(a.dateApplied));

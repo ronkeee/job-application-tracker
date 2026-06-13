@@ -445,6 +445,56 @@
     .badge-rejected  { background: var(--rejected-bg);  color: #fff; }
     .badge-offer     { background: var(--offer-bg);     color: #fff; }
 
+    .badge-btn {
+      border: none;
+      cursor: pointer;
+      font-family: var(--mono);
+      transition: filter 0.12s;
+    }
+    .badge-btn:hover { filter: brightness(1.15); }
+    .badge-pin {
+      margin-left: 4px;
+      font-size: 9px;
+      vertical-align: middle;
+    }
+
+    /* ── Status override menu ── */
+    .status-menu {
+      display: none;
+      position: fixed;
+      flex-direction: column;
+      min-width: 120px;
+      padding: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      z-index: 100;
+    }
+    .status-menu.open { display: flex; }
+    .status-menu-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      background: none;
+      padding: 6px 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .status-menu-option:hover { background: var(--border); }
+    .status-menu-option .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-menu-option.active { font-weight: 700; }
+
     /* ── Footer ── */
     .footer {
       margin-top: 40px;
@@ -524,6 +574,8 @@
     </div>
   </div>
 
+  <div class="status-menu" id="status-menu"></div>
+
   <!-- Status breakdown -->
   <div class="activity-section">
     <div class="activity-title" id="activity-title"></div>
@@ -602,8 +654,9 @@
       ];
     }
 
-    function badge(status) {
-      return `<span class="badge badge-${status}">${STATUS_LABELS[status] || status}</span>`;
+    function badge(a) {
+      const pin = a.statusOverride ? `<span class="badge-pin" title="Manually set — won't change on sync">📌</span>` : '';
+      return `<button type="button" class="badge badge-${a.status} badge-btn" onclick="openStatusMenu(event, '${escHtml(a.threadId)}')">${STATUS_LABELS[a.status] || a.status}${pin}</button>`;
     }
 
     // Intro animation should only play once, on initial load — not on
@@ -730,7 +783,7 @@
                 ? `<span class="last-subj">${escHtml(a.lastReplySubject)}</span><span class="last-date">${fmtDate(a.lastReply)}</span>`
                 : '<span style="color:var(--dim)">—</span>'}
             </td>
-            <td class="col-status">${badge(a.status)}</td>
+            <td class="col-status">${badge(a)}</td>
           </tr>
           ${expandContent}`;
       }).join('');
@@ -748,6 +801,74 @@
       if (!exp) return;
       expandedIndex = expandedIndex === i ? null : i;
       renderTable();
+    }
+
+    // ── Manual status override menu ─────────────────────────────────────
+    const STATUS_DOT_VAR = { offer:'--offer-bg', interview:'--interview-bg', pending:'--pending-bg', rejected:'--rejected-bg' };
+
+    function openStatusMenu(event, threadId) {
+      event.stopPropagation();
+      const menu = document.getElementById('status-menu');
+
+      // Toggle off if reopening the same badge's menu
+      if (menu.classList.contains('open') && menu.dataset.threadId === threadId) {
+        closeStatusMenu();
+        return;
+      }
+
+      const app = allApps.find(a => a.threadId === threadId);
+      if (!app) return;
+
+      menu.dataset.threadId = threadId;
+      menu.innerHTML = STATUS_ORDER.map(s => `
+        <button type="button" class="status-menu-option${s === app.status ? ' active' : ''}" onclick="applyStatusOverride('${escHtml(threadId)}', '${s}')">
+          <span class="dot" style="background:var(${STATUS_DOT_VAR[s]})"></span>
+          ${STATUS_LABELS[s]}
+        </button>`).join('');
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 4}px`;
+      menu.style.left = `${rect.left}px`;
+      menu.classList.add('open');
+    }
+
+    function closeStatusMenu() {
+      const menu = document.getElementById('status-menu');
+      menu.classList.remove('open');
+      delete menu.dataset.threadId;
+    }
+
+    async function applyStatusOverride(threadId, status) {
+      const toast = document.getElementById('sync-toast');
+      closeStatusMenu();
+      try {
+        const res = await fetch('/api/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ threadId, status }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'unknown error');
+
+        const app = allApps.find(a => a.threadId === threadId);
+        if (app) {
+          app.status = status;
+          app.statusOverride = true;
+        }
+        renderTable();
+        renderActivity(allApps);
+
+        toast.className = 'sync-toast success';
+        toast.textContent = `Status set to ${STATUS_LABELS[status]} — won't change on sync`;
+      } catch (err) {
+        toast.className = 'sync-toast error';
+        toast.textContent = `Couldn't update status: ${err.message}`;
+      }
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.className = 'sync-toast';
+        toast.textContent = '';
+      }, 5000);
     }
 
     function escHtml(s) {
@@ -815,6 +936,9 @@
       }
       if (!path.some(el => el.id === 'filters-row' || el.id === 'filter-toggle')) {
         toggleFilters(true);
+      }
+      if (!path.some(el => el.id === 'status-menu')) {
+        closeStatusMenu();
       }
     });
 

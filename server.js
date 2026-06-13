@@ -3,9 +3,12 @@
 // which runs gmail_fetcher.js on demand and streams the result back.
 import { spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 
 const PORT = 4343;
 const ROOT = import.meta.dir;
+const APPLICATIONS_PATH = path.join(ROOT, 'applications.json');
+const VALID_STATUSES = ['pending', 'interview', 'rejected', 'offer'];
 
 let syncing = false;
 
@@ -36,6 +39,33 @@ Bun.serve({
 
     if (url.pathname === '/api/sync/status') {
       return Response.json({ syncing });
+    }
+
+    // ── Manual status override ──────────────────────────────────────────
+    if (url.pathname === '/api/status' && req.method === 'POST') {
+      let body;
+      try {
+        body = await req.json();
+      } catch {
+        return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+      }
+
+      const { threadId, status } = body;
+      if (!threadId || !VALID_STATUSES.includes(status)) {
+        return Response.json({ error: 'Invalid threadId or status' }, { status: 400 });
+      }
+
+      const data = JSON.parse(fs.readFileSync(APPLICATIONS_PATH, 'utf8'));
+      const entry = data.applications.find((a) => a.threadId === threadId);
+      if (!entry) {
+        return Response.json({ error: 'Application not found' }, { status: 404 });
+      }
+
+      entry.status = status;
+      entry.statusOverride = true;
+      fs.writeFileSync(APPLICATIONS_PATH, JSON.stringify(data, null, 2));
+
+      return Response.json({ ok: true });
     }
 
     if (url.pathname === '/api/config') {
