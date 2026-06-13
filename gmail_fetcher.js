@@ -362,8 +362,18 @@ for (const threadId of allThreadIds) {
   const to = getHeader(firstMsg.payload.headers, 'to');
   const date = formatDate(firstMsg.internalDate);
 
+  // The first message is usually Ron's own application email (sender:
+  // himself), which is useless for company extraction. Use the first reply
+  // from the company instead, falling back to the thread's first message.
+  const myHandle = config.handle.replace('@', '').toLowerCase();
+  const companyMsg = messages.find(m => {
+    const f = getHeader(m.payload.headers, 'from').toLowerCase();
+    return !f.includes(myEmail.split('@')[0].toLowerCase()) && !f.includes(myHandle);
+  }) || firstMsg;
+  const companyFrom = getHeader(companyMsg.payload.headers, 'from');
+
   // Extract company + role
-  const fromEmail = from.match(/<(.+?)>/)?.[1] || from;
+  const fromEmail = companyFrom.match(/<(.+?)>/)?.[1] || companyFrom;
 
   // Skip senders that are never job applications (newsletters, account notices, etc.)
   if (NON_JOB_DOMAINS.some(d => fromEmail.toLowerCase().includes(d))) {
@@ -377,10 +387,10 @@ for (const threadId of allThreadIds) {
     console.log(`  ⏭  Skipping: "${subject.slice(0,60)}"`);
     continue;
   }
-  console.log(`  📩 Subject: "${subject}" | From: ${from.slice(0,50)}`);
+  console.log(`  📩 Subject: "${subject}" | From: ${companyFrom.slice(0,50)}`);
 
   // For ATS emails, try the display name (e.g. "Guardio <no-reply@comeet...>")
-  const fromDisplayName = from.match(/^([^<@]+?)\s*</)?.[1]?.trim();
+  const fromDisplayName = companyFrom.match(/^([^<@]+?)\s*</)?.[1]?.trim();
   const isATS = ATS_DOMAINS.some(ats => fromEmail.includes(ats));
   // A sender display name like "Noy Kazaz - Eitan" is a recruiter's personal
   // name, not the company — fall back to parsing the subject in that case
@@ -392,7 +402,12 @@ for (const threadId of allThreadIds) {
   const parsed = parseSubject(subject);
   if (parsed.company && /^(re|fwd?)$/i.test(parsed.company)) parsed.company = null;
 
-  let company = fromCompany || parsed.company || 'Unknown';
+  // If there's no reply yet (companyMsg is Ron's own sent message), try the
+  // recipient address of the application email as a last resort
+  const toEmail = to.match(/<(.+?)>/)?.[1] || to;
+  const toCompany = companyMsg === firstMsg ? extractCompanyFromEmail(toEmail) : null;
+
+  let company = fromCompany || parsed.company || toCompany || 'Unknown';
   let role = parsed.role || extractRoleFromBody(threadBodyText) || config.defaultRole;
 
   // Clean up role — if it looks like a company name (no design keywords), use as company
