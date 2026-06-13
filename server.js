@@ -11,6 +11,7 @@ let syncing = false;
 
 Bun.serve({
   port: PORT,
+  idleTimeout: 120,
   async fetch(req) {
     const url = new URL(req.url);
 
@@ -26,6 +27,7 @@ Bun.serve({
         const duration = ((Date.now() - start) / 1000).toFixed(1);
         return Response.json({ ok: true, duration, ...result });
       } catch (err) {
+        console.error('Sync failed:', err);
         return Response.json({ ok: false, error: String(err) }, { status: 500 });
       } finally {
         syncing = false;
@@ -61,13 +63,22 @@ Bun.serve({
   },
 });
 
+const FETCH_TIMEOUT_MS = 60_000;
+
 function runFetcher() {
   return new Promise((resolve, reject) => {
     const proc = spawn('bun', ['gmail_fetcher.js'], { cwd: ROOT });
     let output = '';
     proc.stdout.on('data', (d) => (output += d.toString()));
     proc.stderr.on('data', (d) => (output += d.toString()));
+
+    const timeout = setTimeout(() => {
+      proc.kill();
+      reject(new Error(`gmail_fetcher.js timed out after ${FETCH_TIMEOUT_MS / 1000}s\n${output}`));
+    }, FETCH_TIMEOUT_MS);
+
     proc.on('close', (code) => {
+      clearTimeout(timeout);
       if (code === 0) {
         const match = output.match(/Saved (\d+) applications/);
         resolve({ count: match ? Number(match[1]) : null, log: output });
@@ -75,7 +86,10 @@ function runFetcher() {
         reject(new Error(`gmail_fetcher.js exited with code ${code}\n${output}`));
       }
     });
-    proc.on('error', reject);
+    proc.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
   });
 }
 
