@@ -671,13 +671,30 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .sync-toast {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 6px;
-      min-height: 14px;
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-12px);
+      z-index: 100;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      white-space: nowrap;
     }
-    .sync-toast.error { color: var(--rejected); }
-    .sync-toast.success { color: var(--interview); }
+    .sync-toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .sync-toast.error { color: var(--rejected); border-color: var(--rejected); }
+    .sync-toast.success { color: var(--interview); border-color: var(--interview); }
 
     /* ── Theme toggle ── */
     .theme-toggle {
@@ -721,10 +738,10 @@
           <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
       </div>
-      <div class="sync-toast" id="sync-toast"></div>
     </div>
   </div>
 
+  <div class="sync-toast" id="sync-toast"></div>
   <div class="status-menu" id="status-menu"></div>
   <div class="remove-confirm" id="remove-confirm"></div>
   <div class="reset-confirm" id="reset-confirm"></div>
@@ -1000,7 +1017,6 @@
     }
 
     async function applyStatusOverride(threadId, status) {
-      const toast = document.getElementById('sync-toast');
       closeStatusMenu();
       try {
         const res = await fetch('/api/status', {
@@ -1019,17 +1035,10 @@
         renderTable();
         renderActivity(allApps);
 
-        toast.className = 'sync-toast success';
-        toast.textContent = `Status set to ${STATUS_LABELS[status]} — won't change on sync`;
+        showToast(`Status set to ${STATUS_LABELS[status]} — won't change on sync`, 'success');
       } catch (err) {
-        toast.className = 'sync-toast error';
-        toast.textContent = `Couldn't update status: ${err.message}`;
+        showToast(`Couldn't update status: ${err.message}`, 'error');
       }
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        toast.className = 'sync-toast';
-        toast.textContent = '';
-      }, 5000);
     }
 
     // ── Remove application ───────────────────────────────────────────────
@@ -1064,7 +1073,6 @@
     }
 
     async function confirmRemove(threadId) {
-      const toast = document.getElementById('sync-toast');
       closeRemoveConfirm();
       try {
         const res = await fetch('/api/remove', {
@@ -1081,17 +1089,10 @@
         renderFilters(allApps);
         renderTable();
 
-        toast.className = 'sync-toast success';
-        toast.textContent = `Removed — it won't reappear on future syncs`;
+        showToast(`Removed — it won't reappear on future syncs`, 'success');
       } catch (err) {
-        toast.className = 'sync-toast error';
-        toast.textContent = `Couldn't remove: ${err.message}`;
+        showToast(`Couldn't remove: ${err.message}`, 'error');
       }
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        toast.className = 'sync-toast';
-        toast.textContent = '';
-      }, 5000);
     }
 
     // ── Reset all manual changes ─────────────────────────────────────────
@@ -1123,7 +1124,6 @@
     }
 
     async function confirmResetAll() {
-      const toast = document.getElementById('sync-toast');
       closeResetConfirm();
       try {
         const res = await fetch('/api/reset', { method: 'POST' });
@@ -1133,13 +1133,7 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
         await syncNow(30);
       } catch (err) {
-        toast.className = 'sync-toast error';
-        toast.textContent = `Couldn't reset: ${err.message}`;
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => {
-          toast.className = 'sync-toast';
-          toast.textContent = '';
-        }, 5000);
+        showToast(`Couldn't reset: ${err.message}`, 'error');
       }
     }
 
@@ -1369,18 +1363,26 @@
     let syncSeconds = 0;
     let toastTimer = null;
 
+    // ── Toast notifications (top-center bar) ─────────────────────────────
+    function showToast(message, type) {
+      const toast = document.getElementById('sync-toast');
+      clearTimeout(toastTimer);
+      toast.className = `sync-toast visible${type ? ' ' + type : ''}`;
+      toast.textContent = message;
+      toastTimer = setTimeout(() => {
+        toast.className = 'sync-toast';
+        toast.textContent = '';
+      }, 5000);
+    }
+
     async function syncNow(days) {
       const btn = document.getElementById('sync-btn');
       const label = document.getElementById('sync-label');
-      const toast = document.getElementById('sync-toast');
 
       if (btn.classList.contains('loading')) return;
 
       btn.classList.add('loading');
       btn.disabled = true;
-      toast.className = 'sync-toast';
-      toast.textContent = '';
-      clearTimeout(toastTimer);
       syncSeconds = 0;
       label.textContent = `Syncing... 0s`;
       syncTimer = setInterval(() => {
@@ -1399,31 +1401,18 @@
 
         if (!res.ok || !data.ok) {
           console.error('Sync failed:', data.error);
-          toast.className = 'sync-toast error';
-          toast.textContent = `Sync failed. Check the server logs and try again.`;
+          showToast(`Sync failed. Check the server logs and try again.`, 'error');
           label.textContent = 'Sync Now';
         } else {
-          toast.className = 'sync-toast success';
-          toast.textContent = `Synced ${data.count ?? ''} applications in ${data.duration}s`;
+          showToast(`Synced ${data.count ?? ''} applications in ${data.duration}s`, 'success');
           label.textContent = 'Sync Now';
           await loadData();
         }
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => {
-          toast.className = 'sync-toast';
-          toast.textContent = '';
-        }, 5000);
       } catch (err) {
         clearInterval(syncTimer);
         console.error('Sync failed:', err);
-        toast.className = 'sync-toast error';
-        toast.textContent = `Sync failed. Check your connection and try again.`;
+        showToast(`Sync failed. Check your connection and try again.`, 'error');
         label.textContent = 'Sync Now';
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => {
-          toast.className = 'sync-toast';
-          toast.textContent = '';
-        }, 5000);
       } finally {
         btn.classList.remove('loading');
         btn.disabled = false;
