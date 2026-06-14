@@ -337,7 +337,8 @@
     .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
     /* ── Table ── */
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; min-width: 640px; border-collapse: collapse; table-layout: fixed; }
     col.col-company { width: 11%; }
     col.col-role { width: 16%; }
     col.col-date { width: 9%; }
@@ -778,25 +779,27 @@
     </button>
   </div>
 
-  <table>
-    <colgroup>
-      <col class="col-company">
-      <col class="col-role">
-      <col class="col-date">
-      <col class="col-last">
-      <col class="col-status">
-    </colgroup>
-    <thead>
-      <tr id="table-head-row">
-        <th>Company</th>
-        <th>Role</th>
-        <th class="sortable" data-sort="lastReply" onclick="setSort('lastReply')">Received <span class="sort-arrow"></span></th>
-        <th>Last Email</th>
-        <th class="sortable" data-sort="status" onclick="setSort('status')" style="text-align:right">Status <span class="sort-arrow"></span></th>
-      </tr>
-    </thead>
-    <tbody id="table-body"></tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <colgroup>
+        <col class="col-company">
+        <col class="col-role">
+        <col class="col-date">
+        <col class="col-last">
+        <col class="col-status">
+      </colgroup>
+      <thead>
+        <tr id="table-head-row">
+          <th>Company</th>
+          <th>Role</th>
+          <th class="sortable" data-sort="lastReply" onclick="setSort('lastReply')">Received <span class="sort-arrow"></span></th>
+          <th>Last Email</th>
+          <th class="sortable" data-sort="status" onclick="setSort('status')" style="text-align:right">Status <span class="sort-arrow"></span></th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
 
   <div class="footer">
     <div id="footer-left">[Ron.Keren] // Active Job Search</div>
