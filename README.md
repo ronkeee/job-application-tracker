@@ -93,8 +93,8 @@ running `bun gmail_fetcher.js` (or `./refresh.sh`) again.
 
 ## Interview prep
 
-For applications in the **Interview** or **Offer** stage, the expanded row
-includes ready-to-paste commands for the
+For applications in the **Interview** or **Offer** stage, the expanded row's
+**Notes** section includes ready-to-paste commands for the
 [interview-coach](https://github.com/noamseg/interview-coach-skill) Claude
 Code skill (installed at `~/.claude/skills/interview-coach/`), e.g.:
 
@@ -104,8 +104,9 @@ Code skill (installed at `~/.claude/skills/interview-coach/`), e.g.:
 /interview-coach negotiate <Company> — <Role>
 ```
 
-Click **Copy**, paste the command into Claude Code, and the coach will
-research the company, build a tailored prep plan, or help with negotiation.
+Click the copy icon next to a command, paste it into Claude Code, and the
+coach will research the company, build a tailored prep plan, or help with
+negotiation.
 
 ## Files
 
