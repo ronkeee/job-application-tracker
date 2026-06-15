@@ -85,6 +85,27 @@ running `bun gmail_fetcher.js` (or `./refresh.sh`) again.
   emails, so fewer "Unknown" or misclassified entries show up.
 - **Improved empty/error states** — clearer messaging when you have no
   applications yet or when a sync fails.
+- **Notes & AI interview prep** — expand an application to jot down prep
+  notes (recruiter contacts, questions to ask, etc.) that persist across
+  syncs. Interview and offer-stage applications also get copyable
+  `/interview-coach` commands and a next-steps checklist — see
+  [Interview prep](#interview-prep) below.
+
+## Interview prep
+
+For applications in the **Interview** or **Offer** stage, the expanded row
+includes ready-to-paste commands for the
+[interview-coach](https://github.com/noamseg/interview-coach-skill) Claude
+Code skill (installed at `~/.claude/skills/interview-coach/`), e.g.:
+
+```
+/interview-coach research <Company> — <Role>
+/interview-coach prep <Company> — <Role>
+/interview-coach negotiate <Company> — <Role>
+```
+
+Click **Copy**, paste the command into Claude Code, and the coach will
+research the company, build a tailored prep plan, or help with negotiation.
 
 ## Files
 
