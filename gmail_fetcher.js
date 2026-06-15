@@ -517,11 +517,15 @@ if (fs.existsSync(OUTPUT_PATH)) {
 
   merged = merged.map((app) => {
     const prev = previousByCompany.get(app.company.toLowerCase());
+    let result = app;
     if (prev?.statusOverride) {
       console.log(`  📌 Keeping manual status for ${app.company}: ${prev.status}`);
-      return { ...app, status: prev.status, statusOverride: true };
+      result = { ...result, status: prev.status, statusOverride: true };
     }
-    return app;
+    if (prev?.notes) {
+      result = { ...result, notes: prev.notes };
+    }
+    return result;
   });
 
   const seenCompanies = new Set(merged.map((a) => a.company.toLowerCase()));

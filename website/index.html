@@ -462,6 +462,71 @@
       display: block;
     }
 
+    /* ── Interview prep: commands & next steps ── */
+    .prep-commands { display: flex; flex-direction: column; gap: 2px; }
+    .cmd-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cmd-text {
+      font-size: 10.5px;
+      color: var(--bright);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cmd-hint {
+      font-size: 10px;
+      color: var(--dim);
+      margin: 2px 0 8px;
+    }
+    .copy-btn {
+      flex-shrink: 0;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--dim);
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .copy-btn:hover { border-color: var(--bright); color: var(--bright); }
+    .steps-list {
+      margin: 0;
+      padding-left: 16px;
+      font-size: 11.5px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── Notes ── */
+    .expand-col-notes { flex: 1 1 220px; min-width: 220px; }
+    .notes-textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .notes-textarea:focus {
+      outline: none;
+      border-color: var(--bright);
+    }
+
     /* ── Status badge — pill, no dot ── */
     .badge {
       display: inline-block;
@@ -836,6 +901,33 @@
       ];
     }
 
+    // Status-aware interview prep: copyable commands for the interview-coach
+    // skill, plus a short next-steps checklist.
+    function buildPrepActions(a) {
+      const target = `${a.company} — ${a.role}`;
+      if (a.status === 'interview') {
+        return {
+          commands: [
+            { cmd: `/interview-coach research ${target}`, hint: 'Research the company, interviewers & role' },
+            { cmd: `/interview-coach prep ${target}`, hint: 'Build a tailored prep plan & likely questions' },
+          ],
+          steps: ['Research the company & your interviewers', 'Prep your STAR stories', 'Prepare questions to ask them'],
+        };
+      }
+      if (a.status === 'offer') {
+        return {
+          commands: [
+            { cmd: `/interview-coach negotiate ${target}`, hint: 'Review and negotiate your offer' },
+          ],
+          steps: ['Review the full compensation package', 'Decide on your ask', 'Practice the negotiation conversation'],
+        };
+      }
+      if (a.status === 'pending') {
+        return { commands: [], steps: ["Follow up if you haven't heard back in 1-2 weeks"] };
+      }
+      return { commands: [], steps: [] };
+    }
+
     function badge(a) {
       return `<button type="button" class="badge badge-${a.status} badge-btn" onclick="openStatusMenu(event, '${escHtml(a.threadId)}')" title="${a.statusOverride ? "Manually set — won't change on sync" : ''}">${STATUS_LABELS[a.status] || a.status}</button>`;
     }
@@ -916,12 +1008,14 @@
         const hasRejection = a.status === 'rejected' && a.rejectionReason;
         const hasLinks = a.links && a.links.length > 0;
         const researchLinks = buildResearchLinks(a.company);
+        const prep = buildPrepActions(a);
         const isOpen = expandedIndex === i;
-        const expandContent = hasBody ? `
+        const expandContent = `
           <tr class="expand-row${isOpen ? ' open' : ''}${tableAnimated ? ' no-anim' : ''}" id="expand-${i}">
             <td class="expand-cell" colspan="5">
               <div class="expand-inner">
                 <div class="expand-grid">
+                  ${hasBody ? `
                   <div class="expand-col-preview">
                     <div class="expand-block-label">Last Email Preview</div>
                     <div class="expand-body">${escHtml(a.bodyExcerpt || '').slice(0, 600)}</div>
@@ -929,7 +1023,7 @@
                     <div class="link-list">
                       ${a.links.map(l => `<a href="${escHtml(l.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${escHtml(l.label)}</a>`).join('')}
                     </div>` : ''}
-                  </div>
+                  </div>` : ''}
                   ${hasRejection ? `
                   <div>
                     <div class="expand-block-label">Rejection Reason</div>
@@ -943,6 +1037,25 @@
                     <div class="link-list">
                       ${researchLinks.map(l => `<a href="${escHtml(l.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${escHtml(l.label)}</a>`).join('')}
                     </div>
+                    ${prep.commands.length ? `
+                    <div class="expand-block-label" style="margin-top:12px">Get AI Interview Prep</div>
+                    <div class="prep-commands">
+                      ${prep.commands.map(c => `
+                      <div class="cmd-row">
+                        <code class="cmd-text">${escHtml(c.cmd)}</code>
+                        <button type="button" class="copy-btn" data-cmd="${escHtml(c.cmd)}" onclick="copyCmd(event, this)" title="Copy command">Copy</button>
+                      </div>
+                      <div class="cmd-hint">${escHtml(c.hint)}</div>`).join('')}
+                    </div>` : ''}
+                    ${prep.steps.length ? `
+                    <div class="expand-block-label" style="margin-top:12px">Next Steps</div>
+                    <ul class="steps-list">
+                      ${prep.steps.map(s => `<li>${escHtml(s)}</li>`).join('')}
+                    </ul>` : ''}
+                  </div>
+                  <div class="expand-col-notes">
+                    <div class="expand-block-label">Notes</div>
+                    <textarea class="notes-textarea" data-thread="${escHtml(a.threadId)}" placeholder="Interview prep notes, recruiter contacts, questions to ask..." onclick="event.stopPropagation()" onblur="saveNotes(event)">${escHtml(a.notes || '')}</textarea>
                   </div>
                   <div class="expand-col-remove">
                     <button type="button" class="remove-btn" onclick="openRemoveConfirm(event, '${escHtml(a.threadId)}')">
@@ -953,7 +1066,7 @@
                 </div>
               </div>
             </td>
-          </tr>` : '';
+          </tr>`;
 
         return `
           <tr class="data-row${isOpen ? ' expanded' : ''}${tableAnimated ? ' no-anim' : ''}" onclick="toggle(${i})" id="row-${i}" style="animation-delay:${0.3 + i * 0.06}s">
@@ -1045,6 +1158,52 @@
       } catch (err) {
         showToast(`Couldn't update status: ${err.message}`, 'error');
       }
+    }
+
+    // ── Notes ─────────────────────────────────────────────────────────────
+    async function saveNotes(event) {
+      const textarea = event.target;
+      const threadId = textarea.dataset.thread;
+      const notes = textarea.value;
+      const app = allApps.find(a => a.threadId === threadId);
+      if (app && app.notes === notes) return;
+
+      try {
+        const res = await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ threadId, notes }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'unknown error');
+
+        if (app) app.notes = notes;
+        showToast('Notes saved', 'success');
+      } catch (err) {
+        showToast(`Couldn't save notes: ${err.message}`, 'error');
+      }
+    }
+
+    // ── Copy interview-coach command ─────────────────────────────────────
+    function copyCmd(event, btn) {
+      event.stopPropagation();
+      const text = btn.dataset.cmd;
+      const flash = () => {
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      };
+      navigator.clipboard.writeText(text).then(flash, () => {
+        const tmp = document.createElement('textarea');
+        tmp.value = text;
+        tmp.style.position = 'fixed';
+        tmp.style.opacity = '0';
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand('copy');
+        document.body.removeChild(tmp);
+        flash();
+      });
     }
 
     // ── Remove application ───────────────────────────────────────────────

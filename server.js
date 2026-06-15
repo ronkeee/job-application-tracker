@@ -73,6 +73,32 @@ Bun.serve({
       return Response.json({ ok: true });
     }
 
+    // ── Notes ────────────────────────────────────────────────────────────
+    if (url.pathname === '/api/notes' && req.method === 'POST') {
+      let body;
+      try {
+        body = await req.json();
+      } catch {
+        return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+      }
+
+      const { threadId, notes } = body;
+      if (!threadId || typeof notes !== 'string') {
+        return Response.json({ error: 'Invalid threadId or notes' }, { status: 400 });
+      }
+
+      const data = JSON.parse(fs.readFileSync(APPLICATIONS_PATH, 'utf8'));
+      const entry = data.applications.find((a) => a.threadId === threadId);
+      if (!entry) {
+        return Response.json({ error: 'Application not found' }, { status: 404 });
+      }
+
+      entry.notes = notes;
+      fs.writeFileSync(APPLICATIONS_PATH, JSON.stringify(data, null, 2));
+
+      return Response.json({ ok: true });
+    }
+
     // ── Permanent removal ────────────────────────────────────────────────
     if (url.pathname === '/api/remove' && req.method === 'POST') {
       let body;
