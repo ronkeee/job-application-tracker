@@ -465,17 +465,16 @@
     /* ── Interview prep: commands & next steps ── */
     .prep-commands { display: flex; flex-direction: column; gap: 2px; }
     .cmd-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      position: relative;
     }
     .cmd-text {
+      display: block;
       font-size: 10.5px;
       color: var(--bright);
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 3px 8px;
+      padding: 3px 28px 3px 8px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -485,20 +484,27 @@
       color: var(--dim);
       margin: 2px 0 8px;
     }
-    .copy-btn {
-      flex-shrink: 0;
-      font-family: var(--mono);
-      font-size: 10px;
-      font-weight: 500;
-      padding: 3px 8px;
+    .copy-icon-btn {
+      position: absolute;
+      top: 50%;
+      right: 4px;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: none;
       border-radius: 4px;
-      border: 1px solid var(--border);
       background: none;
       color: var(--dim);
       cursor: pointer;
-      transition: border-color 0.12s, color 0.12s;
+      transition: color 0.12s, background 0.12s;
     }
-    .copy-btn:hover { border-color: var(--bright); color: var(--bright); }
+    .copy-icon-btn svg { width: 13px; height: 13px; }
+    .copy-icon-btn:hover { color: var(--bright); background: var(--border); }
+    .copy-icon-btn.copied { color: var(--green, #4ade80); }
     .steps-list {
       margin: 0;
       padding-left: 16px;
@@ -1037,16 +1043,6 @@
                     <div class="link-list">
                       ${researchLinks.map(l => `<a href="${escHtml(l.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${escHtml(l.label)}</a>`).join('')}
                     </div>
-                    ${prep.commands.length ? `
-                    <div class="expand-block-label" style="margin-top:12px">Get AI Interview Prep</div>
-                    <div class="prep-commands">
-                      ${prep.commands.map(c => `
-                      <div class="cmd-row">
-                        <code class="cmd-text">${escHtml(c.cmd)}</code>
-                        <button type="button" class="copy-btn" data-cmd="${escHtml(c.cmd)}" onclick="copyCmd(event, this)" title="Copy command">Copy</button>
-                      </div>
-                      <div class="cmd-hint">${escHtml(c.hint)}</div>`).join('')}
-                    </div>` : ''}
                     ${prep.steps.length ? `
                     <div class="expand-block-label" style="margin-top:12px">Next Steps</div>
                     <ul class="steps-list">
@@ -1056,6 +1052,19 @@
                   <div class="expand-col-notes">
                     <div class="expand-block-label">Notes</div>
                     <textarea class="notes-textarea" data-thread="${escHtml(a.threadId)}" placeholder="Interview prep notes, recruiter contacts, questions to ask..." onclick="event.stopPropagation()" onblur="saveNotes(event)">${escHtml(a.notes || '')}</textarea>
+                    ${prep.commands.length ? `
+                    <div class="expand-block-label" style="margin-top:12px">Get AI Interview Prep</div>
+                    <div class="cmd-hint">Copy a command and paste it into Claude Code</div>
+                    <div class="prep-commands">
+                      ${prep.commands.map(c => `
+                      <div class="cmd-row">
+                        <code class="cmd-text">${escHtml(c.cmd)}</code>
+                        <button type="button" class="copy-icon-btn" data-cmd="${escHtml(c.cmd)}" onclick="copyCmd(event, this)" title="Copy command to paste into Claude Code">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                      </div>
+                      <div class="cmd-hint">${escHtml(c.hint)}</div>`).join('')}
+                    </div>` : ''}
                   </div>
                   <div class="expand-col-remove">
                     <button type="button" class="remove-btn" onclick="openRemoveConfirm(event, '${escHtml(a.threadId)}')">
@@ -1189,9 +1198,15 @@
       event.stopPropagation();
       const text = btn.dataset.cmd;
       const flash = () => {
-        const original = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = original; }, 1500);
+        const original = btn.innerHTML;
+        btn.classList.add('copied');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>';
+        btn.title = 'Copied!';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = original;
+          btn.title = 'Copy command to paste into Claude Code';
+        }, 1500);
       };
       navigator.clipboard.writeText(text).then(flash, () => {
         const tmp = document.createElement('textarea');
