@@ -327,16 +327,26 @@ const afterDate = `${since.getFullYear()}/${String(since.getMonth()+1).padStart(
 // messages — when an OR group has too many clauses, so each query below is
 // kept short (2-3 terms) rather than one big OR group.
 const queries = [
-  // Sent applications
-  `in:sent after:${afterDate} (application OR "applying for" OR "cover letter" OR "I am applying" OR "senior product designer")`,
-  // Company replies / confirmations
-  `in:inbox after:${afterDate} (application received OR "thank you for applying")`,
-  `in:inbox after:${afterDate} ("thanks for applying" OR "your application")`,
-  `in:inbox after:${afterDate} ("not moving forward" OR "unfortunately")`,
-  `in:inbox after:${afterDate} ("next steps")`,
-  // Interview / scheduling emails (separate query — Gmail's OR grouping above can miss these)
+  // Sent applications — kept small to avoid OR-limit silent drops
+  `in:sent after:${afterDate} (application OR "applying for" OR "cover letter")`,
+  `in:sent after:${afterDate} ("I am applying" OR "senior product designer" OR "product designer" OR "UX designer")`,
+  // Application confirmations — split into small OR groups for reliability
+  `in:inbox after:${afterDate} ("thank you for applying" OR "thanks for applying")`,
+  `in:inbox after:${afterDate} ("thank you for your application" OR "thanks for your application")`,
+  `in:inbox after:${afterDate} ("application has been received" OR "we received your application")`,
+  `in:inbox after:${afterDate} ("application received" OR "your application for" OR "applied for the")`,
+  `in:inbox after:${afterDate} ("we will review" OR "we are reviewing" OR "we look forward to reviewing")`,
+  `in:inbox after:${afterDate} ("your application" OR "your interest in joining" OR "your interest in the")`,
+  // Rejections
+  `in:inbox after:${afterDate} ("not moving forward" OR "unfortunately" OR "not selected")`,
+  `in:inbox after:${afterDate} ("decided to move forward with other" OR "position has been filled" OR "not be progressing")`,
+  // Positive signals / next steps
+  `in:inbox after:${afterDate} ("next steps" OR "pleased to inform" OR "move forward with you")`,
+  `in:inbox after:${afterDate} ("shortlisted" OR "we'd like to invite" OR "we would like to invite")`,
+  // Interview & scheduling
+  `in:inbox after:${afterDate} ("interview invitation" OR "interview request" OR "invite you for an interview")`,
   `in:inbox after:${afterDate} (interview OR "intro call")`,
-  `in:inbox after:${afterDate} ("schedule a call" OR "select a time" OR "phone screen")`,
+  `in:inbox after:${afterDate} ("schedule a call" OR "select a time" OR "phone screen" OR "book a time")`,
 ];
 
 const allThreadIds = new Set();
