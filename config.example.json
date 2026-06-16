@@ -1,5 +1,6 @@
 {
   "displayName": "Jane Doe",
   "handle": "jane@doe",
-  "defaultRole": "Software Engineer"
+  "defaultRole": "Software Engineer",
+  "roleKeywords": ["Software Engineer", "Frontend Engineer"]
 }

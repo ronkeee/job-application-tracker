@@ -20,9 +20,15 @@ const displayName = await ask('Your name', existing.displayName || defaults.disp
 const handle = await ask('Terminal handle (shown as "handle:~/job-search $")', existing.handle || defaults.handle);
 const defaultRole = await ask('Default job role', existing.defaultRole || defaults.defaultRole);
 
+const existingKeywords = (existing.roleKeywords || defaults.roleKeywords || []).join(', ');
+console.log('\nRole keywords are used to find your sent application emails in Gmail.');
+console.log('Examples: "Product Designer, UX Designer" | "Software Engineer, Frontend Engineer" | "Product Manager, PM"\n');
+const roleKeywordsRaw = await ask('Role keywords (comma-separated)', existingKeywords || defaultRole);
+const roleKeywords = roleKeywordsRaw.split(',').map(s => s.trim()).filter(Boolean);
+
 rl.close();
 
-const config = { displayName, handle, defaultRole };
+const config = { displayName, handle, defaultRole, roleKeywords };
 fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
 
 console.log('\n✅ Saved config.json\n');

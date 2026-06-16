@@ -326,10 +326,14 @@ const afterDate = `${since.getFullYear()}/${String(since.getMonth()+1).padStart(
 // Gmail's search API can silently drop matches — especially very recent
 // messages — when an OR group has too many clauses, so each query below is
 // kept short (2-3 terms) rather than one big OR group.
+// Build role keyword query from config — falls back to defaultRole if not set
+const roleKeywords = (config.roleKeywords?.length ? config.roleKeywords : [config.defaultRole])
+  .map(k => `"${k}"`).join(' OR ');
+
 const queries = [
   // Sent applications — kept small to avoid OR-limit silent drops
   `in:sent after:${afterDate} (application OR "applying for" OR "cover letter")`,
-  `in:sent after:${afterDate} ("I am applying" OR "senior product designer" OR "product designer" OR "UX designer")`,
+  `in:sent after:${afterDate} ("I am applying" OR ${roleKeywords})`,
   // Application confirmations — split into small OR groups for reliability
   `in:inbox after:${afterDate} ("thank you for applying" OR "thanks for applying")`,
   `in:inbox after:${afterDate} ("thank you for your application" OR "thanks for your application")`,
